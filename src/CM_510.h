@@ -1,12 +1,11 @@
-﻿/** \file CM_510.h
+﻿/*! \file CM_510.h
+    \brief Symbolic definitions of the Robotis CM-510 controller peripheries.
 	\author Unknown forum user (First version)
 	\author Hans-Peter Wolf (Extension & Documentation)
-	\copyright GNU Public License.
+	\copyright GNU Public License V3
 	\date 2007, 2012
- */
 
-/** \file CM_510.h
-    \brief Symbolic definitions of the Robotis CM-510 controller peripheries.
+	\file CM_510.h
     \details This file contains useful symbolic definitions in order to simplify the access
 	to LEDs, buttons, the microphone and analog-digital	converters (ADC) of the CM-510
 	controller from Robotis.
