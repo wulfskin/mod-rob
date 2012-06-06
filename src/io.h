@@ -41,18 +41,6 @@ MIC_Init();
 // Check for a signal
 if (MIC_ACTIVE) ;
 \endcode
-	
-\note There are three lines of code in the ZigBee_RC100 example code for both
-       the CM-510 and CM-700 that perplex me a bit.  Given that none of these
-       pins are listed on the Robotis support site for the CM-700 as being
-       connected to any signal of note nor are they set as outputs, I am unsure
-       that they are actually functional.  A more in depth look is at the end
-       of this file.
-\code
-         PORTD &= ~0x80;	//PORT_LINK_PLUGIN = 0;   // no pull up
-         PORTD &= ~0x20;	//PORT_ENABLE_RXD_LINK_PC = 0;
-         PORTD |= 0x40;	//PORT_ENABLE_RXD_LINK_ZIGBEE = 1;
-\endcode
  */
 
 #ifndef	__IO_H
