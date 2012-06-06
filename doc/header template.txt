@@ -1,0 +1,9 @@
+/** 	\file filenamename
+	\brief brief description
+	\author authorname 
+	\copyright GNU Public Licence V3
+	\date 2012
+
+	\file filenamename	
+	\details detailed description
+*/
