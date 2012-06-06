@@ -130,7 +130,7 @@
     <Compile Include="macro.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="main.c">
+    <Compile Include="navigationtest.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="motor.c">
