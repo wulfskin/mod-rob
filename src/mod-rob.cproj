@@ -130,9 +130,6 @@
     <Compile Include="macro.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="navigationtest.c">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="motor.c">
       <SubType>compile</SubType>
     </Compile>
@@ -142,10 +139,19 @@
     <Compile Include="motor_control_table.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="navigationtest.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="sensor.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="sensor.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="serialzigbee.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="serialzigbee.h">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
