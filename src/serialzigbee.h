@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-#define LINK_PLUGIN = 0x80;
-#define ENABLE_RXD_LINK_PC = 0x20;
-#define ENABLE_RXD_LINK_ZIGBEE = 0x40;
+#define LINK_PLUGIN 0x80
+#define ENABLE_RXD_LINK_PC 0x20
+#define ENABLE_RXD_LINK_ZIGBEE 0x40
 
 
 void serial_set_zigbee();
