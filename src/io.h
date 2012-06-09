@@ -1,22 +1,22 @@
 ﻿/*! \file io.h
-    \brief Symbolic definitions of the Robotis CM-510 controller I/O peripheries.
-	\author Unknown forum user (First version)
-	\author Hans-Peter Wolf (Extension & Documentation)
+    \brief Interface to the Robotis CM-510 controller I/O peripheries.
+	\author Hans-Peter Wolf
 	\copyright GNU Public License V3
-	\date 2007, 2012
+	\date 2012
 
 	\file io.h
-    \details This file contains useful symbolic definitions in order to simplify the access
+    \details This file provides easy-to-use access
 	to the I/O (LEDs, buttons, the microphone and the buzzer) of the CM-510
-	controller from Robotis.
-	It includes tested support for LEDs, buttons and the microphone. Buzzer?
+	controller from Robotis. In order to use this interface it has to be 
+	initialized once by calling #io_init(). Then the following functions and 
+	macros can be used.
 	
-	In order to get started we have provided the following examples:
+	In order to get started the following examples might be helpful:
 	
 	\par 1. Switching an LED on:
 \code
 // Initialize LEDs once
-LED_Init(); 
+led_init(); 
 // Switch the auxiliary (AUX) LED on
 LED_ON(LED_AUX);
 // Other LEDs are: LED_POWER, LED_TXD, LED_RXD, LED_AUX, LED_MANAGE, LED_PROGRAM, LED_PLAY
@@ -28,7 +28,7 @@ LED_OFF(LED_ALL);
 	\details \par 2. Checking if a button is pressed:
 \code
 // Initialize the buttons once
-BTN_Init();
+btn_init();
 // Check if button start is pressed
 if (BTN_START_PRESSED) ;
 // Other buttons are: BTN_UP_PRESSED, BTN_DOWN_PRESSED, BTN_LEFT_PRESSED, BTN_RIGHT_PRESSED
@@ -37,9 +37,20 @@ if (BTN_START_PRESSED) ;
 	\details \par 3. Check if the microphone detects a signal:
 \code
 // Initialize the microphone once
-MIC_Init();
+mic_init();
 // Check for a signal
 if (MIC_ACTIVE) ;
+\endcode
+
+	\details A more sophisticated way of accessing the microphone and the buttons is provided
+	by a callback (interrupt) interface. Please refer to #io_set_interrupt() for more information.
+
+	\details \par 4. Generate a buzz:
+\code
+// initialize the buzzer
+buzzer_init();
+// Generate a buzz
+BUZZ;
 \endcode
  */
 
@@ -47,37 +58,24 @@ if (MIC_ACTIVE) ;
 #define __IO_H
 
 #include <avr/io.h>
+#include <util/atomic.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // *********************************************************************************
-// PORTA
-//    Set pin output low to set external header high (inverted via transistor)
-//    Can control multiple ports with bit-wise OR
-//        e.g. EXT_PORT_ON(EXT_PORT_1 | EXT_PORT_2);
-
-//#define EXT_PORTS_ENABLE	DDRA|=(0xFC)
-//#define EXT_PORTS_DISABLE	DDRA&=~(0xFC)
-//#define EXT_PORT_1		0x80
-//#define EXT_PORT_2		0x40
-//#define EXT_PORT_3		0x20
-//#define EXT_PORT_4		0x10
-//#define EXT_PORT_5		0x08
-//#define EXT_PORT_6		0x04
-//#define EXT_PORT_ON(x)	PORTA&=~(x)
-//#define EXT_PORT_OFF(x)	PORTA|=(x)
-
-
-// *********************************************************************************
 // PORTB
-//    Set pin output low to turn on (inverted via transistor?)
+//    Toggle buzzer pin to buzz
 
+// Symbolic address of buzzer port.
 #define BUZZER			0x20
-#define BUZZER_ON		PORTB&=~(BUZZER)
-#define BUZZER_OFF		PORTB|=(BUZZER)
 
+/// Generate a buzz.
+#define BUZZ			(PORTB ^= (BUZZER))
+
+/// Function to initialize the buzzer port.
+void buzzer_init();
 
 // *********************************************************************************
 // PORTC - LEDs
@@ -127,7 +125,7 @@ LED_ON(LED_POWER);
 LED_ON(LED_TXD | LED_RXD);
  * \endcode
  */
-#define LED_ON(x)		PORTC &= ~(x)
+#define LED_ON(x)		(PORTC &= ~(x))
 
 /** Macro to switch LEDs off.
  * \code
@@ -135,85 +133,125 @@ LED_ON(LED_TXD | LED_RXD);
  LED_OFF(LED_ALL);
  * \endcode
  */
-#define LED_OFF(x)		PORTC |= (x)
+#define LED_OFF(x)		(PORTC |= (x))
+
+/// Macro to toggle LEDs.
+#define LED_TOGGLE(x)	(PORTC ^= (x))
 
 /** Function to initialize controller for LED usage.
  *  The function defines PIN0 - PIN6 of port C of the micro controller as outputs
  *  in order to use them to control the connected LEDs and switches them off (=high).
  */
-static inline void LED_Init()
-{
-	// Define LED ports as outputs
-	DDRC |= LED_ALL;
-	// Switch LEDs off
-	LED_OFF(LED_ALL);
-}
+void led_init();
 
+/** Function to check whether LEDs are set.
+ * The function checks whether LEDs are set. All LEDs (#LED_POWER, #LED_MANAGE, #LED_PROGRAM,
+ * #LED_PLAY, #LED_TXD, #LED_RXD and #LED_AUX) and a combination of them including
+ * #LED_ALL are supported.
+ * \param[in]	led		LEDs to check.
+ * \returns Returns non-zero, in case _all_ specified LEDs are switched on.
+ */
+uint8_t led_get(uint8_t led);
 
 // *********************************************************************************
 // PORTD - BUTTONS AND MICROPHONE
-//    Input high when button pressed or microphone input sufficiently loud
+//    Input high when button pressed or microphone input sufficiently loud.
 
-/// Symbolic address of the start button (START)
+/// Symbolic address of the start button (START).
 #define BTN_START		0x01
 
-#define BTN_START_PRESSED	(PIND & BTN_START)
+/// Macro to check whether the start button is pressed.
+#define BTN_START_PRESSED	((PIND & BTN_START) == 0)
 
+/// Symbolic address of the microphone signal.
 #define MIC_SIGNAL		0x02
-#define MIC_ACTIVE		(PIND & MIC_SIGNAL)
+
+/// Macro to check whether the microphone is active.
+#define MIC_ACTIVE		((PIND & MIC_SIGNAL) == 0)
 
 /** Function to initialize controller for button usage.
  * The function defines PIN4 - PIN7 of port E and PIN0 of port D of the micro controller 
  * as inputs in order to use them to check the connected buttons. It also activates the
  * the pull-up resistor.
  */
-static inline void MIC_Init()
-{
-	// Define microphone port as input
-	DDRD &= ~MIC_SIGNAL;
-	// Active pull-up resistor (????????????????????????????????)
-	PORTD |= MIC_SIGNAL;
-}
+void mic_init();
 
 // *********************************************************************************
 // PORTE - 
 //    Input high when button pressed
 
-/// Symbolic address of the up button (U)
+/// Symbolic address of the up button (U).
 #define BTN_UP			0x10
-/// Symbolic address of the down button (D)
+/// Symbolic address of the down button (D).
 #define BTN_DOWN		0x20
-/// Symbolic address of the left button (L)
+/// Symbolic address of the left button (L).
 #define BTN_LEFT		0x40
-/// Symbolic address of the right button (R)
+/// Symbolic address of the right button (R).
 #define BTN_RIGHT		0x80
 
-/// Macro to check whether the up button is pressed
-#define BTN_UP_PRESSED		(PINE & (BTN_UP))
+/// Macro to check whether the up button is pressed.
+#define BTN_UP_PRESSED		((PINE & BTN_UP) == 0)
 
-/// Macro to check whether the down button is pressed
-#define BTN_DOWN_PRESSED	(PINE & (BTN_DOWN))
+/// Macro to check whether the down button is pressed.
+#define BTN_DOWN_PRESSED	((PINE & BTN_DOWN) == 0)
 
-/// Macro to check whether the left button is pressed
-#define BTN_LEFT_PRESSED	(PINE & (BTN_LEFT))
+/// Macro to check whether the left button is pressed.
+#define BTN_LEFT_PRESSED	((PINE & BTN_LEFT) == 0)
 
-/// Macro to check whether the right button is pressed
-#define BTN_RIGHT_PRESSED	(PINE & (BTN_RIGHT))
+/// Macro to check whether the right button is pressed.
+#define BTN_RIGHT_PRESSED	((PINE & BTN_RIGHT) == 0)
 
 /** Function to initialize controller for button usage.
  * The function defines PIN4 - PIN7 of port E and PIN0 of port D of the micro controller 
  * as inputs in order to use them to check the connected buttons. It also activates the
  * the pull-up resistor.
  */
-static inline void BTN_Init()
+void btn_init();
+
+/// I/O callback function definition.
+typedef void (*io_callback)(void);
+
+/** Function to define interrupts for the microphone and buttons.
+ * This function can be used to assign callback functions to be called
+ * in case the state of the microphone or the buttons changes. In case more than one port
+ * is defined, the callback function for all of them will be the same.
+ * \par Example:
+\code
+#include <avr/interrupt.h>
+
+void btn_start_callback()
 {
-	// Define button ports D and E as inputs
-	DDRE &= ~(BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT);
-	DDRD &= ~(BTN_START);
-	// Active pull-up resistor
-	PORTE |= (BTN_UP | BTN_DOWN | BTN_LEFT | BTN_RIGHT);
-	PORTD |= (BTN_START);
+	if (BTN_START_PRESSED)
+		printf("Button start was pressed.\n");
+	else
+		printf("Button start was released.\n");
 }	
+
+// Initialize I/O
+io_init();
+// Initialize general interrupts
+sei();
+// Assign callback function for BTN_START
+if (io_set_interrupt(BTN_START, &btn_start_callback))
+	printf("Interrupt enabled.\n");
+\endcode
+ * \param[in]	io_port		Port(s) for which the callback function should be assigned.
+ * Valid ports are #MIC_SIGNAL, #BTN_START, #BTN_UP, #BTN_DOWN, #BTN_LEFT and #BTN_RIGHT.
+ * \param[in]	callback	Callback function to be called in case the state changes.
+ * Assign this parameter to _NULL_ to disable interrupts.
+ * \returns The return value is non-zero in case the operation has been successful. That is
+ * if the provided port(s) was/were valid.
+ * \note General interrupts must be enabled in order to make the interrupts work. To enable
+ * them call the function _sei()_ before. 
+ */
+int io_set_interrupt(uint8_t io_port, io_callback callback);
+
+/** Function to initialize the complete I/O peripheries.
+ * This helper function initializes the complete I/O peripheries
+ * by initializing the buzzer, LEDs, microphone and buttons internally.
+ * Alternatively, one can initialize each component separately.
+ */ 
+void io_init();
 
 #ifdef __cplusplus
 }
