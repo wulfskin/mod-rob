@@ -39,7 +39,7 @@
 		sensor_init(SENSOR_FRONTRIGHT,IR);
 		sensor_init(SENSOR_BACKLEFT,IR);
 		sensor_init(SENSOR_BACKRIGHT,IR);
-		LED_Init();
+		led_init();
 		motor_set_mode(254,MOTOR_WHEEL_MODE);
 		serial_set_zigbee();
 		dxl_write_word(254,14,256);
@@ -102,7 +102,7 @@
 			//speed_rightt=ir_backright>speed_right? (speed_left-ir_backleft): 0;
 			//speed_right-=ir_backright;
 			
-			int target_left = (ir_frontleft < 50 ? (1023ul - ir_frontleft) : (-ir_frontleft);
+			int target_left = (ir_frontleft < 50) ? (1023ul - ir_frontleft) : (-ir_frontleft);
 			if (ir_backleft > ir_frontleft)
 				target_left = 0;
 			else
