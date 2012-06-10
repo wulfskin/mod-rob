@@ -1,5 +1,5 @@
 /*! \file io.c
-    \brief Interface to the Robotis CM-510 controller I/O peripheries (declaration part, see io.h for interface).
+    \brief Interface to the Robotis CM-510 controller I/O peripheries (declaration part, see io.h for an interface description).
 
  */
 
