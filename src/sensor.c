@@ -19,7 +19,7 @@ void sensor_init(char sensor,char type){
 	
 }
 
-int sensor_read(char sensor,char type) {
+uint8_t sensor_read(char sensor,char type) {
 	//check sensor is [1:6]
 	if(sensor<1 || sensor>6){
 		error_blocking();
@@ -36,8 +36,13 @@ int sensor_read(char sensor,char type) {
 	if(type) {
 		SET(PORTA,(8-sensor));			//Turn off IR led  
 	}
-	return ADC;
+	// Scale measurement value
+	uint16_t adc = ADC;
+	if (adc > 511)
+		adc = 511;
+	return (uint8_t) (adc >> 1);
 }
+
 /*
 int sensor_read(int sensor) {
 	//check sensor is [1:6]
