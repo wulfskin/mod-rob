@@ -1,11 +1,5 @@
 /*! \file timer.c
-    \brief Timer abstraction layer for ATmega2561 microcontroller
-	\author Hans-Peter Wolf
-	\copyright GNU Public License V3
-	\date 2012
-
-	\file timer.c
-    \details MORETOCOME
+    \brief Timer/Counter abstraction layer for ATmega2561 microcontroller (declaration part, see timer.h for an interface description).
  */
 
 #include "timer.h"
@@ -16,34 +10,53 @@
 #include <avr/interrupt.h>
 #include <util/atomic.h>
 
+/// \private Macro to mask the normal prescaler.
 #define TIMER_MASK_PRESCALER_NORMAL(PRESCALER)		((PRESCALER) & 0x0F)
+/// \private Macro to mask the fine prescaler for timer2.
 #define TIMER_MASK_PRESCALER_FINE(PRESCALER)		(((PRESCALER) & 0xF0) >> 4)
 
+/// \private Timer prescaler bitmask.
 #define TIMER_PRESCALER_MASK		0x07
+/// \private Macro to set timer prescaler register.
 #define TIMER_SET_PRESCALER(REGISTER, PRESCALER)		((REGISTER) = ((REGISTER) & ~TIMER_PRESCALER_MASK) + (PRESCALER))
 
+/// \private Timer mode mask for timer 0.
 #define TIMER_MASK_MODE_0(MODE)		((MODE) & 0x0F)
+/// \private Timer mode mask for timer 1 and similiar.
 #define TIMER_MASK_MODE_1(MODE)		(((MODE) & 0xF0) >> 4)
+/// \private Timer mode mask for timer 2.
 #define TIMER_MASK_MODE_2(MODE)		TIMER_MASK_MODE_0(MODE)
 
+/// \private Timer mode mask for part A.
 #define TIMER_MODE_MASK_A				0x03
+/// \private Timer mode mask for part B.
 #define TIMER_MODE_MASK_B				0x0C
 
+/// \private Timer mode mask for timer0 control register A.
 #define TIMER_MODE_REGISTER_MASK_0A		0x03
+/// \private Timer mode mask for timer0 control register B.
 #define TIMER_MODE_REGISTER_MASK_0B		0x08
 
+/// \private Timer mode mask for timer1 control register A similar.
 #define TIMER_MODE_REGISTER_MASK_1A		0x03
+/// \private Timer mode mask for timer1 control register A and similar.
 #define TIMER_MODE_REGISTER_MASK_1B		0x18
 
+
 #ifndef TIMER_ENABLE_SIMPLE_INTERRUPTS
+/// \private Interrupt mask for timer0.
 #define TIMER_INTERRUPT_MASK_0		(0x07)
+/// \private Interrupt mask for timer1 and similar.
 #define TIMER_INTERRUPT_MASK_1		(0x2F)
+/// \private Interrupt mask for timer2.
 #define TIMER_INTERRUPT_MASK_2		TIMER_INTERRUPT_MASK_0
 
-
+/// \private Amount of counters supported by hardware.
 #define TIMER_AMOUNT 6
+/// \private Amount of interrupts supported by each timer (5) and software (4).
 #define TIMER_INTERRUPT_TYPES 4
 
+/// \private Global variable to store the timer interrupt callback functions.
 static volatile timer_callback timer_interrupt_callback[TIMER_AMOUNT][TIMER_INTERRUPT_TYPES] = { {NULL, NULL, NULL, NULL},
 																								 {NULL, NULL, NULL, NULL},
 																								 {NULL, NULL, NULL, NULL},
@@ -72,7 +85,7 @@ int timer_set_prescaler(uint8_t timer, timer_prescaler prescaler)
 		break;
 		
 		default:
-			return TIMER_ERROR_INVALID_COUNTER;
+			return TIMER_ERROR_INVALID_TIMER;
 	}
 	// Check if prescaler combination is valid
 	if (scaler || prescaler == TPS_DISABLED)
@@ -154,7 +167,7 @@ int timer_set_mode(uint8_t timer, timer_operation_mode timer_mode)
 		break;
 			
 		default:
-			return TIMER_ERROR_INVALID_COUNTER;
+			return TIMER_ERROR_INVALID_TIMER;
 	}
 	if (mode != 0 || timer_mode == TOM_NORMAL)
 	{
@@ -309,7 +322,7 @@ int timer_get_act_value(uint8_t timer, timer_value_type type, uint16_t * act_val
 			}
 		
 		default:
-			return TIMER_ERROR_INVALID_COUNTER;
+			return TIMER_ERROR_INVALID_TIMER;
 	}	
 }
 
@@ -426,7 +439,7 @@ int timer_set_value(uint8_t timer, timer_value_type type, uint16_t new_value)
 			}
 		
 		default:
-			return TIMER_ERROR_INVALID_COUNTER;
+			return TIMER_ERROR_INVALID_TIMER;
 	}
 }
 
@@ -488,7 +501,7 @@ int timer_set_interrupt(uint8_t timer, timer_interrupt_types interrupt_type, tim
 		break;
 		
 		default:
-			return TIMER_ERROR_INVALID_COUNTER;
+			return TIMER_ERROR_INVALID_TIMER;
 	}
 	if (interrupt)
 	{
