@@ -22,12 +22,13 @@ void motor_set_speed(char id, int motor_speed){
 	dxl_write_word(id, MOVING_SPEED_L, motor_speed);
 }
 
-void motor_set_speed_dir(char id, uint8_t percentage, char wise){
-	uint16_t v=0;
-	v = (uint16_t) percentage*1023ul/100ul;
+void motor_set_speed_dir(char id, uint16_t speed, char wise){
+//	uint16_t v=0;
+//	v = (uint16_t) percentage*1023ul/100ul;
+	speed &= 0x03FF;
 	if (wise)
-		SET(v,10); //bit 10 is the direction bit 0 ccw, 1 cw
-	dxl_write_word(id, MOVING_SPEED_L, v);
+		SET(speed, 10); //bit 10 is the direction bit 0 ccw, 1 cw
+	dxl_write_word(id, MOVING_SPEED_L, speed);
 }
 
 int motor_get_speed(char id) {
