@@ -8,6 +8,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 
 #include "macro.h"
 #include "sensor.h"
@@ -36,7 +37,6 @@
 
 #define NOISE_LEVEL	5
 
-
 void timer0_compA()
 {
 	; // Do something every ms	
@@ -44,7 +44,33 @@ void timer0_compA()
 
 int timer0_initialize()
 {	
+	return 0;
+}
 
+static volatile int state = -1;
+
+void reset_state()
+{
+	if (BTN_START_PRESSED)
+		state = 0;
+}
+
+int get_state()
+{
+	int loc_state = 0;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+	{
+		loc_state = state;
+	}	
+	return loc_state;
+}
+
+void set_state(int new_state)
+{
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+	{
+		state = new_state;
+	}		
 }
 
 int main() {
@@ -58,6 +84,7 @@ int main() {
 	sensor_init(SENSOR_BACKLEFT,IR);
 	sensor_init(SENSOR_BACKRIGHT,IR);
 	io_init();
+	io_set_interrupt(BTN_START, &reset_state);
 	
 	// Active general interrupts
 	sei();
@@ -69,14 +96,14 @@ int main() {
 	//dxl_write_word(254, 14, 1023);
 			
 	uint8_t ir_frontleft, ir_frontright, ir_backleft, ir_backright, dis_front;
-	int speed_left, speed_right;
+	int speed_left = 0, speed_right = 0;
 	int speed_diff = 0;
+	int offset = 10;
 	//uint8_t state = STATE_AVOID_OBSTACLES_DIFF;
 	
-	char direction_left, direction_right;
+	char direction_left = 0, direction_right = 0;
 	
 	uint16_t speed_l, speed_r;
-    char state = 2;
 	printf("PROGRAM IS RUNNING!\n");
 
 	while(1) {
@@ -96,16 +123,18 @@ int main() {
 		if (ir_backright < NOISE_LEVEL)
 			ir_backright = 0;
 			
-		if (state == 0 && (ir_frontleft > DISTANCE_TO_TURN) && (ir_frontright > DISTANCE_TO_TURN))
-			state = 1;
-		else if (state == 1 && (ir_frontleft < DISTANCE_TO_RECOVER) && (ir_frontright < DISTANCE_TO_RECOVER) && (dis_front < 100))
-			state = 0;
-		switch (state)
+		//if (state == 0 && (ir_frontleft > DISTANCE_TO_TURN) && (ir_frontright > DISTANCE_TO_TURN))
+		//	state = 1;
+		//else if (state == 1 && (ir_frontleft < DISTANCE_TO_RECOVER) && (ir_frontright < DISTANCE_TO_RECOVER) && (dis_front < 100))
+		//	state = 0;
+		
+		switch (get_state())
 		{
 			case 0:
 			{
 				// State 0: Avoid obstacles
 				LED_OFF(LED_PLAY);
+				LED_OFF(LED_AUX);
 			    // Going forward
 				if (ir_frontright < DISTANCE_TO_TURN) {
 				    direction_left = MOTOR_CCW;
@@ -124,6 +153,16 @@ int main() {
 				    direction_right = MOTOR_CCW;
 				    speed_right = ir_frontleft;
 			    }
+				
+				if (offset > 0)
+					speed_right -= offset;
+				else
+					speed_left -= offset;
+				
+				if(ir_backleft > 80)
+				{
+					set_state(2);
+				}								
 				break;
 			}
 			case 1:
@@ -135,6 +174,7 @@ int main() {
 				direction_left = MOTOR_CW;
 				speed_right = 255/2 + speed_diff;
 				direction_right = MOTOR_CCW;
+
 				break;	
 			}
 			case 2:
@@ -143,29 +183,38 @@ int main() {
 				LED_ON(LED_AUX);
 				if (ir_frontleft < 20)
 				{
-					speed_left = 255/2 - 20;
-					speed_right = 255/2 + 20;
+					speed_left = 255-40;
+					speed_right = 255;
 				}
 				else
 				{
-					speed_left = 255/2 + 20;
-					speed_right = 255/2 - 20;
+					speed_left = 255;
+					speed_right = 255-40;
 				}
 				// Go forward
 				direction_left = MOTOR_CCW;
 				direction_right = MOTOR_CW;
+				if (ir_frontleft == 0)
+					set_state(0);
+					offset = -offset;			
 				break;
 			}
-			case 3:
-				// Turn
-				break;			
-        }
+			default:
+			{
+				break;
+				speed_left = 0;
+				speed_right = 0;
+			}							
+        }		
 		
 		uint8_t dist = 0;
 		if (DISTANCE_TO_BRAKE > dis_front)
 			dist = DISTANCE_TO_BRAKE - dis_front;
 		else
 			dist = 0;
+			
+	    if (direction_left == MOTOR_CW && direction_right == MOTOR_CCW)
+		 dist = 255;
 	
 		uint8_t speed = (uint8_t)(MAX_SPEED_IN_PERCENTAGE * (uint32_t)dist / DISTANCE_TO_BRAKE);
 		if (speed < MIN_SPEED_IN_PERCENTAGE)

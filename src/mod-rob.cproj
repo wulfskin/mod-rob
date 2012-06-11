@@ -133,6 +133,9 @@
     <Compile Include="macro.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="navigation_old.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="timer.c">
       <SubType>compile</SubType>
     </Compile>
@@ -146,9 +149,6 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="motor_control_table.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="navigationtest.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="sensor.c">
