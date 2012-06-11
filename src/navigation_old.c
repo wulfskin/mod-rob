@@ -31,6 +31,11 @@
 #define MIN_SPEED_IN_PERCENTAGE 25ul
 #define DISTANCE_TO_BRAKE	200
 
+#define DISTANCE_TO_TURN		25
+#define DISTANCE_TO_RECOVER		10
+
+#define NOISE_LEVEL	5
+
 
 void timer0_compA()
 {
@@ -71,7 +76,7 @@ int main() {
 	char direction_left, direction_right;
 	
 	uint16_t speed_l, speed_r;
-    char state = 0x00;
+    char state = 2;
 	printf("PROGRAM IS RUNNING!\n");
 
 	while(1) {
@@ -80,17 +85,29 @@ int main() {
 		ir_frontright = (sensor_read(SENSOR_FRONTRIGHT, IR));
 		ir_backleft = sensor_read(SENSOR_BACKLEFT, IR);
 		ir_backright = sensor_read(SENSOR_BACKRIGHT, IR);
-
-            if (state == 0x00) {
+		
+		// Remove noise
+		if (ir_frontleft < NOISE_LEVEL)
+			ir_frontleft = 0;
+		if (ir_frontright < NOISE_LEVEL)
+			ir_frontright = 0;
+		if (ir_backleft < NOISE_LEVEL)
+			ir_backleft = 0;
+		if (ir_backright < NOISE_LEVEL)
+			ir_backright = 0;
+			
+		if (state == 0 && (ir_frontleft > DISTANCE_TO_TURN) && (ir_frontright > DISTANCE_TO_TURN))
+			state = 1;
+		else if (state == 1 && (ir_frontleft < DISTANCE_TO_RECOVER) && (ir_frontright < DISTANCE_TO_RECOVER) && (dis_front < 100))
+			state = 0;
+		switch (state)
+		{
+			case 0:
+			{
+				// State 0: Avoid obstacles
 				LED_OFF(LED_PLAY);
-				if (ir_frontleft < 6)
-						ir_frontleft = 0;
-				if (ir_frontright < 6)
-					ir_frontright = 0;
-				//if(ir_backleft >100 || ir_backleft>100)
-					//state=1;
-					
-			    if (ir_frontright < 25) {
+			    // Going forward
+				if (ir_frontright < DISTANCE_TO_TURN) {
 				    direction_left = MOTOR_CCW;
 				    speed_left = 255;//-10*ir_frontright;
 			    }
@@ -98,40 +115,57 @@ int main() {
 				    direction_left = MOTOR_CW;
 				    speed_left = ir_frontright;
 			    }
-				
-				if (ir_frontleft < 25) {
-					direction_right = MOTOR_CW;
-					speed_right = 255;//-10*ir_frontleft;
-				}
-				else {
-					direction_right = MOTOR_CCW;
-					speed_right = ir_frontleft;
-				}
-				
-			
-				//if (speed_right > 255-dis_front && direction_right == MOTOR_CW)
-				 
-											
+			    // Going forward
+			    if (ir_frontleft < DISTANCE_TO_TURN) {
+				    direction_right = MOTOR_CW;
+				    speed_right = 255;//-10*ir_frontleft;
+			    }
+			    else {
+				    direction_right = MOTOR_CCW;
+				    speed_right = ir_frontleft;
+			    }
+				break;
 			}
-			else if(state == 0x01){
+			case 1:
+			{
+				// State 1: Get out of stuck mode
 				LED_ON(LED_PLAY);
-				speed_left=0;
-				speed_right=0;
-				 
-			}			
-		
+				int speed_diff = ir_backleft - ir_backright;
+				speed_left = 255/2 - speed_diff;
+				direction_left = MOTOR_CW;
+				speed_right = 255/2 + speed_diff;
+				direction_right = MOTOR_CCW;
+				break;	
+			}
+			case 2:
+			{
+				// State 2: Follow the left wall
+				LED_ON(LED_AUX);
+				if (ir_frontleft < 20)
+				{
+					speed_left = 255/2 - 20;
+					speed_right = 255/2 + 20;
+				}
+				else
+				{
+					speed_left = 255/2 + 20;
+					speed_right = 255/2 - 20;
+				}
+				// Go forward
+				direction_left = MOTOR_CCW;
+				direction_right = MOTOR_CW;
+				break;
+			}
+			case 3:
+				// Turn
+				break;			
+        }
 		
 		uint8_t dist = 0;
 		if (DISTANCE_TO_BRAKE > dis_front)
 			dist = DISTANCE_TO_BRAKE - dis_front;
 		else
 			dist = 0;
-
-		// In case we go backwards
-		if ((direction_left == MOTOR_CW) && (direction_right == MOTOR_CCW))
-		{
-			dist = DISTANCE_TO_BRAKE;
-		}
 	
 		uint8_t speed = (uint8_t)(MAX_SPEED_IN_PERCENTAGE * (uint32_t)dist / DISTANCE_TO_BRAKE);
 		if (speed < MIN_SPEED_IN_PERCENTAGE)
