@@ -1,18 +1,18 @@
 /*! \file timer.h
-    \brief Timer/Counter abstraction layer for ATmega2561 microcontroller.
+    \brief Timer/Counter abstraction layer for ATmega2561 micro controller.
 	\author Hans-Peter Wolf
 	\copyright GNU Public License V3
 	\date 2012
 
 	\file timer.h
-	\details This file provides easy-to-use access to the timers/counters of the ATmega2561 microcontroller. For convience in the
+	\details This file provides easy-to-use access to the timers/counters of the ATmega2561 micro controller. For convenience in the
 	following only the term _timer(s)_ is used for both of them.
 	
-	The ATmega2561 microcontroller provides 6 timers with different functions. For the sake of simplicity
-	only a (necessary) subpart of the functions which are available hardwarewise are supported by this interface.
+	The ATmega2561 micro controller provides 6 timers with different functions. For the sake of simplicity
+	only a (necessary) subpart of the functions which are available hardware wise are supported by this interface.
 	
-	The microcontroller basically provides two different kind of timers: Two general purpose 8bit timers 0 and 2
-	with slightly different feautures and four high-precision 16bit timers 1, 3, 4 and 5 with a wide range of features.
+	The micro controller basically provides two different kind of timers: Two general purpose 8bit timers 0 and 2
+	with slightly different features and four high-precision 16bit timers 1, 3, 4 and 5 with a wide range of features.
 	
 	The following table provides a short overview of the software-wise supported and
 	<span style="text-decoration:line-through;">non-supported</span> features of each timer:
@@ -255,7 +255,7 @@ int timer_set_mode(uint8_t timer, timer_operation_mode timer_mode);
 	\param[in]	act_value	Pointer to a timer value to be read.
 	\note Not all timers support 16 bit values. Refer to the <a href="#table">feature overview table</a> to see which specific
 	timer values and resolutions are supported for each timer.
-	\returns The function returns #TIMER_ERROR_SUCCESS in case of success and stores the requested value in _act_value_.
+	\returns The function returns #TIMER_ERROR_SUCCESS in case of success and stores the requested value in \p act_value.
 	The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified value is not available on the timer.
  */
@@ -288,7 +288,7 @@ int timer_set(uint8_t timer, uint16_t new_value);
 	\param[out]	act_value	Pointer to the timer value to be read.
 	\note Not all timers support 16 bit values. Refer to the <a href="#table">feature overview table</a> to see which resolutions
 	are supported for each timer.
-	\returns The function returns #TIMER_ERROR_SUCCESS in case of success and stores the requested value in _act_value_.
+	\returns The function returns #TIMER_ERROR_SUCCESS in case of success and stores the requested value in \p act_value.
 	The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified operation mode is not supported by the timer.
  */
