@@ -9,7 +9,8 @@
 #define MOTOR_CW 1
 #define MOTOR_CCW 0
 
-#include "dynamixel.h"
+#include <dynamixel.h>
+#include <stdint.h>
 #include "motor_control_table.h"
 
 void motor_move(char,int);
@@ -19,6 +20,8 @@ void motor_set_mode(char,int);
 int motor_get_mode(char);
 
 void motor_set_speed(char, int);
+
+void motor_set_speed_dir(char, uint16_t, char);
 
 void motor_spin(char,char);
 
