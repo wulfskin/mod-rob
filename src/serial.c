@@ -13,7 +13,8 @@ volatile unsigned char gbSerialBuffer[MAXNUM_SERIALBUFF] = {0};
 volatile unsigned char gbSerialBufferHead = 0;
 volatile unsigned char gbSerialBufferTail = 0;
 static FILE *device;
-static volatile void * callback = NULL;
+
+static volatile serial_rx_callback rx_callback = NULL;
 
 void serial_put_queue( unsigned char data );
 unsigned char serial_get_queue(void);
@@ -139,18 +140,15 @@ unsigned char serial_get_queue(void)
 SIGNAL(USART1_RX_vect)
 {
 	serial_put_queue( UDR1 );
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-	{
-		if (callback != NULL)
-			callback();
-	}		
+	if (rx_callback != NULL)
+		rx_callback();
 }
 
-void set_rx_callback(void * fnc)
+void serial_set_rx_callback(serial_rx_callback callback)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 	{
-		callback = fnc;
+		rx_callback = callback;
 	}
 }
 
