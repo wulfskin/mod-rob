@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <util/delay.h>
 
+void PrintCommStatus(int);
+void PrintErrorCode();
+
 
 int read_data(char,char);
 void motor_move (char id, int position) {
@@ -22,13 +25,12 @@ void motor_set_speed(char id, int motor_speed){
 	dxl_write_word(id, MOVING_SPEED_L, motor_speed);
 }
 
-void motor_set_speed_dir(char id, uint16_t speed, char wise){
-//	uint16_t v=0;
-//	v = (uint16_t) percentage*1023ul/100ul;
-	speed &= 0x03FF;
+void motor_set_speed_dir(char id, uint8_t percentage, char wise){
+	uint16_t v=0;
+	v = (uint16_t) percentage*1023ul/100ul;
 	if (wise)
-		SET(speed, 10); //bit 10 is the direction bit 0 ccw, 1 cw
-	dxl_write_word(id, MOVING_SPEED_L, speed);
+		SET(v,10); //bit 10 is the direction bit 0 ccw, 1 cw
+	dxl_write_word(id, MOVING_SPEED_L, v);
 }
 
 int motor_get_speed(char id) {
@@ -41,6 +43,32 @@ void motor_set_position(char id, int motor_position){
 
 int motor_get_position(char id) {
 	return read_data(id, PRESENT_POSITION_L);
+}
+
+void motor_sync_move(uint8_t size,uint8_t* id,uint16_t*position) {
+	int i, CommStatus;
+	dxl_set_txpacket_id(MOTOR_BROADCAST_ID);
+	dxl_set_txpacket_instruction(INST_SYNC_WRITE);
+	dxl_set_txpacket_parameter(0, GOAL_POSITION_L); //memory area to write
+	dxl_set_txpacket_parameter(1, 2); //length of the data
+	
+	for(i=0;i<size;i++){
+		//dxl_set_txpacket_parameter(2+(3*i), *(id+i)); //id of the first
+		//dxl_set_txpacket_parameter(2+(3*i)+1, dxl_get_lowbyte(*(position+i)));//low byte for first data
+		//dxl_set_txpacket_parameter(2+(3*i)+2, dxl_get_highbyte(*(position+i)));//high byte for first data
+		dxl_set_txpacket_parameter(2+(3*i), id[i]); //id of the first
+		dxl_set_txpacket_parameter(2+(3*i)+1, dxl_get_lowbyte(position[i]));//low byte for first data
+		dxl_set_txpacket_parameter(2+(3*i)+2, dxl_get_highbyte(position[i]));//high byte for first data
+	}
+	
+	dxl_set_txpacket_length((2+1)*size+4);
+	dxl_txrx_packet();
+	CommStatus = dxl_get_result();
+	if( CommStatus == COMM_RXSUCCESS ){
+		PrintErrorCode();
+	}		
+	else
+		PrintCommStatus(CommStatus);			
 }
 
 void motor_spin(char id, char wise){
@@ -93,4 +121,65 @@ int read_data(char id, char which) {
 		}
 	}		
 	return 5000;
+}
+
+
+// Print communication result
+void PrintCommStatus(int CommStatus)
+{
+	switch(CommStatus)
+	{
+		case COMM_TXFAIL:
+		printf("COMM_TXFAIL: Failed transmit instruction packet!\n");
+		break;
+
+		case COMM_TXERROR:
+		printf("COMM_TXERROR: Incorrect instruction packet!\n");
+		break;
+
+		case COMM_RXFAIL:
+		printf("COMM_RXFAIL: Failed get status packet from device!\n");
+		break;
+
+		case COMM_RXWAITING:
+		printf("COMM_RXWAITING: Now recieving status packet!\n");
+		break;
+
+		case COMM_RXTIMEOUT:
+		printf("COMM_RXTIMEOUT: There is no status packet!\n");
+		break;
+
+		case COMM_RXCORRUPT:
+		printf("COMM_RXCORRUPT: Incorrect status packet!\n");
+		break;
+
+		default:
+		printf("This is unknown error code!\n");
+		break;
+	}
+}
+
+// Print error bit of status packet
+void PrintErrorCode()
+{
+	if(dxl_get_rxpacket_error(ERRBIT_VOLTAGE) == 1)
+	printf("Input voltage error!\n");
+
+	if(dxl_get_rxpacket_error(ERRBIT_ANGLE) == 1)
+	printf("Angle limit error!\n");
+
+	if(dxl_get_rxpacket_error(ERRBIT_OVERHEAT) == 1)
+	printf("Overheat error!\n");
+
+	if(dxl_get_rxpacket_error(ERRBIT_RANGE) == 1)
+	printf("Out of range error!\n");
+
+	if(dxl_get_rxpacket_error(ERRBIT_CHECKSUM) == 1)
+	printf("Checksum error!\n");
+
+	if(dxl_get_rxpacket_error(ERRBIT_OVERLOAD) == 1)
+	printf("Overload error!\n");
+
+	if(dxl_get_rxpacket_error(ERRBIT_INSTRUCTION) == 1)
+	printf("Instruction code error!\n");
 }
