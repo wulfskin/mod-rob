@@ -14,7 +14,7 @@
 #include "../sensor.h"
 #include "../motor.h"
 #include <dynamixel.h>
-#include <serial.h>
+#include "../serial.h"
 #include "../error.h"
 #include "../serialzigbee.h"
 #include "../io.h"
