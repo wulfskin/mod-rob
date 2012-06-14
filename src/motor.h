@@ -10,7 +10,7 @@
 #define MOTOR_CCW 0
 
 #include <avr/io.h>
-#include "dynamixel.h"
+#include <dynamixel.h>
 #include "motor_control_table.h"
 
 void motor_move(char,int);
@@ -30,6 +30,10 @@ void motor_set_position(char, int);
 int motor_get_position(char);
 
 void motor_sync_move(uint8_t,uint8_t*,uint16_t*);
+
+void PrintCommStatus(int CommStatus);
+
+void PrintErrorCode();
 #endif //__MOTOR_H
 
 
