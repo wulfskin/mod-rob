@@ -9,6 +9,9 @@
 #define MOTOR_CW 1
 #define MOTOR_CCW 0
 
+#define MOTOR_MOVE_BLOCKING			1
+#define MOTOR_MOVE_NON_BLOCKING		0
+
 #include <avr/io.h>
 #include <dynamixel.h>
 #include "motor_control_table.h"
