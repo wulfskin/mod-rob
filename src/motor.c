@@ -75,7 +75,7 @@ void motor_wait_finish(char id, uint16_t goal_position)
 void motor_set_position(char id, uint16_t motor_position, char blocking) {
 	dxl_write_word(id, GOAL_POSITION_L, motor_position);
 	int CommStatus = dxl_get_result();
-	if (CommStatus = COMM_RXSUCCESS)
+	if (CommStatus == COMM_RXSUCCESS)
 	{
 		if (blocking == MOTOR_MOVE_BLOCKING)
 			motor_wait_finish(id, motor_position);
@@ -107,7 +107,7 @@ void motor_sync_move(uint8_t size, uint8_t * id, uint16_t * position, char block
 	dxl_set_txpacket_length((2+1)*size+4);
 	dxl_txrx_packet();
 	CommStatus = dxl_get_result();
-	if( CommStatus = COMM_RXSUCCESS ){
+	if( CommStatus == COMM_RXSUCCESS ){
 		PrintErrorCode();
 		if (blocking == MOTOR_MOVE_BLOCKING)
 		{
