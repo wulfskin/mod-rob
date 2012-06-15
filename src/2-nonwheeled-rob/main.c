@@ -2,6 +2,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 
 #include "../macro.h"
 #include "../sensor.h"
@@ -15,180 +16,128 @@
 #define CENTER 512
 #define TWIST_AMPLITUDE 20
 #define TWIST_OFFSET 0
+#define FORWARD_STEP 150
+#define MAX_TURN	80
+#define TURN_STEP
 
-#define LOOP 100000
+volatile int16_t global_turn=0;
+volatile uint8_t global_release = 0;
+volatile uint8_t global_use_zigbee = 0;
 
-#define STEP 250
-
-int16_t turn=0,diff=0;
-
-void something(void){
-	LED_TOGGLE(LED_MANAGE);
+void serial_on_receive_data(void)
+{
+	LED_TOGGLE(LED_RXD);
 	unsigned char data;
 	serial_read(&data, 1);
-	//printf("%c\n", data);
-	
-	if(data=='a'){
-		turn = turn>=180 ? 180 : turn+20;
-		printf("turn=%d\n", turn);
-	}		
-	else if(data=='d'){
-			turn = turn<= -180 ? -180 : turn-20;
-			printf("turn=%d\n", turn);
-	}
-	else if(data=='w'){
-		turn=0;
-		printf("turn=%d\n", turn);
+	switch (data)
+	{
+		// Turn left
+		case 'd':
+		{
+			global_turn = (global_turn >= MAX_TURN) ? MAX_TURN : global_turn + 20;
+			printf("turn=%d\n", global_turn);
+			break;
+		}
+		
+		// Turn right
+		case 'a':
+		{
+			global_turn = (global_turn <= -MAX_TURN) ? -MAX_TURN : global_turn - 20;
+			printf("turn=%d\n", global_turn);
+			break;
+		}
+		
+		// Center position
+		case 'w':
+		{
+			global_turn = 0;
+			printf("turn=%d\n", global_turn);
+			break;
+		}
+		
+		// Stop
+		case 's':
+		{
+			// Toggle release
+			global_release ^= 1;
+			break;
+		}
+		
+		// Enable zigbee
+		case 'z':
+		{
+			global_use_zigbee ^= 1;
+			if (global_use_zigbee)
+			{
+				// Enable zigbee connection
+				serial_set_zigbee();
+				printf("Using ZigBee connection.\n");
+			}			
+			else
+			{
+				serial_set_wire();
+				printf("Using wired connection.\n");
+			}			
+			break;
+		}
 	}					
 }
 
-void wait_for_position(int number, int setoffset) {
-			//positions[0]=512+30;
-			dxl_write_word(number,GOAL_POSITION_L,setoffset);
-			uint32_t count=0;
-			do
-			{
-				diff=(setoffset)-dxl_read_word(number,PRESENT_POSITION_L);
-				if (diff < 0)
-				diff = -diff;
-				_delay_us(1000);
-				count+=1;
-				if ((count&0x007F) == 0x0000)
-				 printf("Motor %d now has counted to %u\n", number, count);
-			} while ( diff>5 && count<LOOP );	
+void btn_on_press_start(void)
+{
+	// Toggle release
+	if (BTN_START_PRESSED)
+		global_release ^= 1;
 }
 
-		//uint8_t ids[3]={4,7,8};
-		uint8_t ids[2]={7,8};
-		//uint16_t positions[3];//={512+40,512+70,512-70};
-		uint16_t positions[2];//={512+40,512+70,512-70};
+//uint8_t ids[3]={4,7,8};
+//uint8_t ids[2]={7,8};
+//uint16_t positions[3];//={512+40,512+70,512-70};
+//uint16_t positions[2];//={512+40,512+70,512-70};
 
-	int main() {
-		int CommStatus;
-				
-		dxl_initialize(0,1);
-		serial_initialize(57600);
-		serial_set_rx_callback(&something);
-		serial_set_zigbee();
-		sei();
-		io_init();
-		int i=0,j=0,readd=0,moving=0;
-		printf("start\n");
-		dxl_write_word(4,GOAL_POSITION_L,512);
-		dxl_write_word(7,GOAL_POSITION_L,512);
-		//dxl_write_word(8,GOAL_POSITION_L,512);
+int main() {
+	// Initialize motors
+	dxl_initialize(0,1);
+	// Initialize serial connection
+	serial_initialize(57600);
+	serial_set_rx_callback(&serial_on_receive_data);
+	// Enable interrupts
+	sei();
+	// Enable I/O
+	io_init();
+	io_set_interrupt(BTN_START, &btn_on_press_start);
+	printf("start\n");
+	// Move to start position
+	motor_move(4, CENTER, MOTOR_MOVE_BLOCKING);
+	motor_move(7, CENTER, MOTOR_MOVE_BLOCKING);		
+	// Infinity loop
+	while(1) {
+		// Read global data
+		int16_t turn = 0;
+		uint8_t release = 0;
+		ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+		{
+			turn = global_turn;
+			release = global_release;
+		}
+		if (release)
+		{
+			// Turn forward 1
+			motor_move(4, CENTER + TWIST_OFFSET + TWIST_AMPLITUDE, MOTOR_MOVE_BLOCKING);
+	
+			// Turn middle part 1
+			motor_move(7, CENTER + turn + FORWARD_STEP, MOTOR_MOVE_BLOCKING);
 		
-		
-		while(!(BTN_DOWN_PRESSED));
-		//for(i=0;i<500;i++){
-		while(1) {	
-			//positions[0]=512+30;
-			//positions[1]=512+70;
-			//positions[2]=512+turn-70;
-			//motor_sync_move(3,ids,positions);
-			/*
-						//positions[0]=512+30;
-						dxl_write_word(4,GOAL_POSITION_L,CENTER+TWIST_OFFSET+TWIST_AMPLITUDE);
-						uint32_t count=0;
-						do
-						{
-							diff=(CENTER+TWIST_OFFSET+TWIST_AMPLITUDE)-dxl_read_word(4,PRESENT_POSITION_L);
-							if (diff < 0)
-							diff = -diff;
-							_delay_us(10);
-							count+=1;
-						} while ( diff>5 && count<LOOP );
-
-			*/
-			wait_for_position(4,CENTER+TWIST_OFFSET+TWIST_AMPLITUDE);
-			printf("end loop 1,\n");
-			//} while (dxl_read_byte(4, MOVING));
+			// Turn forward 2
+			motor_move(4, CENTER + TWIST_OFFSET - TWIST_AMPLITUDE, MOTOR_MOVE_BLOCKING);
 			
-			/*dxl_write_word(7,GOAL_POSITION_L,CENTER+turn+STEP);
-			count=0;
-			do
-			{
-				diff=(CENTER+turn+STEP)-dxl_read_word(7,PRESENT_POSITION_L);
-				if (diff < 0)
-				diff = -diff;
-				_delay_us(10);
-				count+=1;
-			} while ( diff>5 && count<LOOP );*/
-			wait_for_position(7, CENTER+turn+STEP);	
-			printf("end loop 2,\n");
+			// Turn middle part 2
+			motor_move(7, CENTER + turn - FORWARD_STEP, MOTOR_MOVE_BLOCKING);
 			
-			//positions[0]=CENTER-turn+STEP;
-			//positions[1]=CENTER;//+turn-STEP;
-			//motor_sync_move(2,ids,positions);
-			
-			//_delay_ms(1);
-/*			do{
-				moving=0;
-				for(j=0;j<3;j++){
-					_delay_ms(1);
-					readd=dxl_read_byte(ids[j],MOVING);
-					CommStatus=dxl_get_result();					
-					if(CommStatus!=COMM_RXSUCCESS)
-					//printf("motor %d moving status:%d\n",j,readd);
-						printf("error %d on motor %d  \n\n",CommStatus,j);
-					
-					moving|=readd;
-				}
-			}while(moving);*/								
-			//_delay_ms(200);
-		
-			//positions[0]=512-30;
-			//positions[1]=512-70;
-			//positions[2]=512+turn+70;
-			//motor_sync_move(3,ids,positions);
-			
-			/*dxl_write_word(4,GOAL_POSITION_L,CENTER+TWIST_OFFSET-TWIST_AMPLITUDE);
-			count=0;
-			do{
-				diff=(CENTER+TWIST_OFFSET-TWIST_AMPLITUDE)-dxl_read_word(4,PRESENT_POSITION_L);
-				if (diff < 0)
-				diff = -diff;
-				_delay_us(10);
-				count+=1;
-			} while ( diff>5 && count<LOOP );*/
-			wait_for_position(4, CENTER+TWIST_OFFSET-TWIST_AMPLITUDE);
-			printf("end loop 3,\n");
-			//} while (dxl_read_byte(4, MOVING));
-					
-			//_delay_ms(60);
-			//positions[0]=CENTER-turn-STEP;
-			//positions[1]=CENTER;//+turn+STEP;
-			//motor_sync_move(2,ids,positions);
-			/*dxl_write_word(7,GOAL_POSITION_L,CENTER+turn-STEP);
-			//_delay_ms(200);
-			count=0;
-			do{
-				diff=(CENTER+turn-STEP)-dxl_read_word(7,PRESENT_POSITION_L);
-				if (diff < 0)
-				diff = -diff;
-				_delay_us(10);
-				count+=1;
-			} while ( diff>5 && count<LOOP );*/
-			wait_for_position(7, CENTER+turn-STEP);
-			printf("end loop 4,\n");
-/*			do{
-				moving=0;
-				for(j=0;j<3;j++){
-					readd=dxl_read_byte(ids[j],MOVING);
-					//printf("motor %d moving status:%d\n",j,readd);
-					_delay_ms(1);
-					moving|=readd;
-				}
-			}while(moving); */
-
+			// Print error code of motor
 			PrintErrorCode();
-			printf("Cycle,\n");
 			
-		//}//closes for loop
-			
-		
-		
-						
-		}// close infinite loop
-		return 0;
+		}					
+	}
+	return 0;
 }
