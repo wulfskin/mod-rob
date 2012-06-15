@@ -117,7 +117,7 @@ int timer0_initialize()
 	// Timer number
 	uint8_t timer = 0;
 	// Compare match A value
-	uint8_t compare_value = F_CPU / 1024 / 64 - 1;
+	uint8_t compare_value = F_CPU / 64 / 1000 - 1;
 	// Set compare match A value
 	if (timer_set_value(timer, TVT_OUTPUT_COMPARE_A, compare_value) == TIMER_ERROR_SUCCESS)
 	{
