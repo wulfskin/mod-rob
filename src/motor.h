@@ -13,7 +13,7 @@
 #include <dynamixel.h>
 #include "motor_control_table.h"
 
-void motor_move(char,int);
+void motor_move(char id, uint16_t motor_position, char blocking);
 
 void motor_set_mode(char,int);
 
@@ -25,15 +25,18 @@ void motor_spin(char,char);
 
 int motor_get_speed(char);
 
-void motor_set_position(char, int);
+void motor_wait_finish(char id, uint16_t goal_position);
 
-int motor_get_position(char);
+void motor_set_position(char id, uint16_t motor_position, char blocking);
 
-void motor_sync_move(uint8_t,uint8_t*,uint16_t*);
+uint16_t motor_get_position(char);
+
+void motor_sync_move(uint8_t size, uint8_t * id, uint16_t * position, char blocking);
 
 void PrintCommStatus(int CommStatus);
 
 void PrintErrorCode();
+
 #endif //__MOTOR_H
 
 

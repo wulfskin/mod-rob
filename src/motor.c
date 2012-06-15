@@ -4,13 +4,18 @@
 #include <stdio.h>
 #include <util/delay.h>
 
-void PrintCommStatus(int);
-void PrintErrorCode();
+/// Maximal allowed deviation from goal position.
+#define MOTOR_MAX_DEVIATION		10
+/// Number of cycles allowed without robot moving.
+#define MOTOR_MAX_CYCLES_WITHOUT_MOVING		5
 
+/// Delay between motor commands to avoid flooding of serial port.
+#define MOTOR_COMMAND_DELAY		5000
 
 int read_data(char,char);
-void motor_move (char id, int position) {
-	dxl_write_word( id, GOAL_POSITION_L, position);	
+
+void motor_move(char id, uint16_t motor_position, char blocking) {
+	motor_set_position(id, motor_position, blocking);
 }
 
 void motor_set_mode(char id, int mode) {
@@ -37,15 +42,41 @@ int motor_get_speed(char id) {
 	return dxl_read_word(id, PRESENT_SPEED_L);
 }
 
-void motor_set_position(char id, int motor_position){
+void motor_wait_finish(char id, uint16_t goal_position)
+{
+	uint16_t present_pos = 0, diff = MOTOR_MAX_DEVIATION + 1, last_diff = 0;
+	uint8_t cycles_not_moving = 0;
+	while (diff > MOTOR_MAX_DEVIATION && cycles_not_moving < MOTOR_MAX_CYCLES_WITHOUT_MOVING)
+	{
+		// Wait to not overload serial motor bus
+		_delay_us(MOTOR_COMMAND_DELAY);
+		// Read current position
+		present_pos = dxl_read_word(id, PRESENT_POSITION_L);
+		if (dxl_get_result() == COMM_RXSUCCESS)
+		{
+			if (present_pos > goal_position)
+				diff = present_pos - goal_position;
+			else
+				diff = goal_position - present_pos;
+			// Check if motor is not moving for a certain time
+			if (diff == last_diff)
+				cycles_not_moving++;
+			last_diff = diff;
+		}
+	} 
+}
+
+void motor_set_position(char id, uint16_t motor_position, char blocking) {
 	dxl_write_word(id, GOAL_POSITION_L, motor_position);
+	if (blocking)
+		motor_wait_finish(id, motor_position);
 }
 
-int motor_get_position(char id) {
-	return read_data(id, PRESENT_POSITION_L);
+uint16_t motor_get_position(char id) {
+	return (uint16_t)read_data(id, PRESENT_POSITION_L);
 }
 
-void motor_sync_move(uint8_t size,uint8_t* id,uint16_t*position) {
+void motor_sync_move(uint8_t size, uint8_t * id, uint16_t * position, char blocking) {
 	int i, CommStatus;
 	dxl_set_txpacket_id(MOTOR_BROADCAST_ID);
 	dxl_set_txpacket_instruction(INST_SYNC_WRITE);
@@ -64,18 +95,23 @@ void motor_sync_move(uint8_t size,uint8_t* id,uint16_t*position) {
 	dxl_set_txpacket_length((2+1)*size+4);
 	dxl_txrx_packet();
 	CommStatus = dxl_get_result();
-	if( CommStatus == COMM_RXSUCCESS ){
+	if( CommStatus = COMM_RXSUCCESS ){
 		PrintErrorCode();
+		if (blocking)
+		{
+			// Wait for finish of all motors
+			for (i = 0; i < size; i++)
+				motor_wait_finish(id[i], position[i]);
+		}			
 	}		
 	else
-		PrintCommStatus(CommStatus);			
+		PrintCommStatus(CommStatus);
 }
 
 void motor_spin(char id, char wise){
 	int goal=wise*1023;
-	motor_set_position(id,goal);
 	motor_set_mode(id,MOTOR_JOINT_MODE);
-	while(!(motor_get_position(id)==goal));
+	motor_set_position(id, goal, 1);
 	motor_set_mode(id,MOTOR_WHEEL_MODE);
 	motor_set_speed(id,1023);
 	motor_set_mode(id,MOTOR_JOINT_MODE);
