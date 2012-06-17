@@ -21,8 +21,8 @@
 
 #define MOVEMENT_FORWARD		0
 #define MOVEMENT_BACKWARD		1
-#define MOVEMENT_LEFT			2
-#define MOVEMENT_RIGHT			3
+#define MOVEMENT_RIGHT			2
+#define MOVEMENT_LEFT			3
 		
 // Global variables
 volatile uint8_t global_release = 0;
@@ -36,25 +36,25 @@ volatile uint8_t global_movement_type = MOVEMENT_FORWARD;
 // Motor IDs
 uint8_t ids[NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
 // Amplitude of oscillations
-const uint16_t amplitude[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {120, 44, 512/2, 512/2, 44, 120},
-	                                                                {120, 44, 512/2, 512/2, 44, 120},
-																	{},
-																	{} };
+const uint16_t amplitude[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {120, 44, 512/2 - 20, 512/2 - 20, 44, 120},
+	                                                                {120, 44, 512/2 - 20, 512/2 - 20, 44, 120},
+																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2},
+																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2} };
 // Frequency in Hz
-const float frequency[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {2, 2, 2, 2, 2, 2},
-	                                                             {2, 2, 2, 2, 2, 2},
-																 {},
-																 {} };
+const float frequency[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {1, 1, 1, 1, 1, 1},
+	                                                             {1, 1, 1, 1, 1, 1},
+																 {1, 1, 1, 1, 1, 1},
+																 {1, 1, 1, 1, 1, 1} };
 // Phase angle in rad
 const float angle[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {M_PI/3, M_PI/3, 0, M_PI, M_PI/3, M_PI/3},
 															 {M_PI/3, M_PI/3, M_PI, 0, M_PI/3, M_PI/3},
-															 {},
-															 {} };
+															 {0, M_PI/3, M_PI/2, M_PI/2, M_PI/3, M_PI},
+															 {M_PI, M_PI/3, M_PI/2, M_PI/2, M_PI/3, 0} };
 // Offset
-const uint16_t offset[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {630, 556 + 50, 512/2, 512/2, 556 + 50, 630},
-																 {630, 556 + 50, 512/2, 512/2, 556 + 50, 630 },
-																 {},
-																 {} };
+const uint16_t offset[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {630, 556 + 50 - 70, 512/2, 512/2, 556 + 50 - 70, 630},
+																 {630, 556 + 50 - 70, 512/2, 512/2, 556 + 50 - 70, 630 },
+																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540},
+																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540} };
 
 
 void serial_receive_data(void){
@@ -148,11 +148,15 @@ void btn_press_start(void)
 }
 
 void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
-	for (int i=0; i<NUMBER_OF_MOTORS; i++)
+	if (movement_type < NUMBER_OF_MOVEMENTS)
 	{
-		float c = cos(2 * M_PI * frequency[movement_type][i] * (float)time_in_ms / 1000 + angle[movement_type][i]);
-		uint16_t pos = amplitude[movement_type][i]*c + offset[movement_type][i];
-	    motor_set_position(ids[i], pos, MOTOR_MOVE_NON_BLOCKING);
+		uint16_t pos[NUMBER_OF_MOTORS];
+		for (int i=0; i<NUMBER_OF_MOTORS; i++)
+		{
+			float c = cos(2 * M_PI * frequency[movement_type][i] * (float)time_in_ms / 1000 + angle[movement_type][i]);
+			pos[i] = amplitude[movement_type][i]*c + offset[movement_type][i];
+		}
+		motor_sync_move(NUMBER_OF_MOTORS, ids, pos, MOTOR_MOVE_NON_BLOCKING);		
 	}
 }
 
@@ -186,6 +190,10 @@ int main() {
 	io_set_interrupt(BTN_START, &btn_press_start);
 	// Enable global interrupts
 	sei();
+	// Define center position
+	const uint16_t center_pos[NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
+	// Go to center position
+	motor_sync_move(NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 	// Declare variables
 	uint8_t release = 0;
 	uint32_t elapsed_time = 0;
@@ -207,18 +215,19 @@ int main() {
 			// Check for turn
 			if (movement_type != last_movement_type)
 			{
-				uint16_t pos[NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
 				// Go to center position
-				motor_sync_move(NUMBER_OF_MOTORS, ids, pos, MOTOR_MOVE_BLOCKING);
+				motor_sync_move(NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 				// Reset timer
 				timer_reset(timer);
+				// Update position
+				last_elapsed_time = 0;
 				// Store current value
 				last_movement_type = movement_type;
 			}
 			// Check if positions should be updated
 			if ((elapsed_time - last_elapsed_time) > MOTOR_UPDATE_POSITION_INTERVAL)
 			{
-				update_motor_position((uint16_t)global_elapsed_time, movement_type);
+				update_motor_position((uint16_t)elapsed_time, movement_type);
 				// Store current time
 				last_elapsed_time = elapsed_time;
 			}					
