@@ -130,7 +130,7 @@ void motor_spin(char id, char wise){
 }
 
 int read_data(char id, char which) {
-	int value=value=dxl_read_word(id,which);
+	int value=dxl_read_word(id,which);
 	int result=dxl_get_result();
 	if(result==COMM_RXSUCCESS)
 		return value;
