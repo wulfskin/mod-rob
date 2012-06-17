@@ -120,15 +120,6 @@ void motor_sync_move(uint8_t size, uint8_t * id, uint16_t * position, char block
 		PrintCommStatus(CommStatus);
 }
 
-void motor_spin(char id, char wise){
-	int goal=wise*1023;
-	motor_set_mode(id,MOTOR_JOINT_MODE);
-	motor_set_position(id, goal, 1);
-	motor_set_mode(id,MOTOR_WHEEL_MODE);
-	motor_set_speed(id,1023);
-	motor_set_mode(id,MOTOR_JOINT_MODE);
-}
-
 int read_data(char id, char which) {
 	int value=dxl_read_word(id,which);
 	int result=dxl_get_result();

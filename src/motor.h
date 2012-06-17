@@ -24,8 +24,6 @@ int motor_get_mode(char);
 
 void motor_set_speed(char, int);
 
-void motor_spin(char,char);
-
 int motor_get_speed(char);
 
 void motor_wait_finish(char id, uint16_t goal_position);
