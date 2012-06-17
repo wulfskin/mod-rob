@@ -36,8 +36,8 @@ volatile uint8_t global_movement_type = MOVEMENT_FORWARD;
 // Motor IDs
 uint8_t ids[NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
 // Amplitude of oscillations
-const uint16_t amplitude[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {120, 44, 512/2 - 20, 512/2 - 20, 44, 120},
-	                                                                {120, 44, 512/2 - 20, 512/2 - 20, 44, 120},
+const uint16_t amplitude[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
+	                                                                {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
 																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2},
 																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2} };
 // Frequency in Hz
@@ -51,8 +51,8 @@ const float angle[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {M_PI/3, M_PI/3, 0,
 															 {0, M_PI/3, M_PI/2, M_PI/2, M_PI/3, M_PI},
 															 {M_PI, M_PI/3, M_PI/2, M_PI/2, M_PI/3, 0} };
 // Offset
-const uint16_t offset[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {630, 556 + 50 - 70, 512/2, 512/2, 556 + 50 - 70, 630},
-																 {630, 556 + 50 - 70, 512/2, 512/2, 556 + 50 - 70, 630 },
+const uint16_t offset[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630},
+																 {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630 },
 																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540},
 																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540} };
 
@@ -169,7 +169,7 @@ void timer0_compare_match(void)
 	}
 	else
 		LED_OFF(LED_PLAY);
-	// Toggle livebit
+	// Toggle live bit
 	if (!(global_elapsed_time % 1000))
 		LED_TOGGLE(LED_AUX);
 }
