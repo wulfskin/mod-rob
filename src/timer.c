@@ -566,6 +566,7 @@ int timer_set_interrupt(const uint8_t timer, const timer_interrupt_types interru
 		return TIMER_ERROR_INVALID_OPERATION;
 }
 
+/// \private Timer0 overflow interrupt service routine.
 ISR (TIMER0_OVF_vect)
 {
 	timer_callback callback = timer_interrupt_callback[0][TIT_OVERFLOW];
@@ -573,6 +574,7 @@ ISR (TIMER0_OVF_vect)
 		callback();		
 }
 
+/// \private Timer0 output compare A interrupt service routine.
 ISR (TIMER0_COMPA_vect)
 {
 	timer_callback callback = timer_interrupt_callback[0][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -580,6 +582,7 @@ ISR (TIMER0_COMPA_vect)
 		callback();
 }
 
+/// \private Timer0 output compare B interrupt service routine.
 ISR (TIMER0_COMPB_vect)
 {
 	timer_callback callback = timer_interrupt_callback[0][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -587,6 +590,7 @@ ISR (TIMER0_COMPB_vect)
 		callback();
 }
 
+/// \private Timer1 overflow interrupt service routine.
 ISR (TIMER1_OVF_vect)
 {
 	timer_callback callback = timer_interrupt_callback[1][TIT_OVERFLOW];
@@ -594,6 +598,7 @@ ISR (TIMER1_OVF_vect)
 		callback();
 }
 
+/// \private Timer1 output compare A interrupt service routine.
 ISR (TIMER1_COMPA_vect)
 {
 	timer_callback callback = timer_interrupt_callback[1][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -601,6 +606,7 @@ ISR (TIMER1_COMPA_vect)
 		callback();
 }
 
+/// \private Timer1 output compare B interrupt service routine.
 ISR (TIMER1_COMPB_vect)
 {
 	timer_callback callback = timer_interrupt_callback[1][TIT_OUTPUT_COMPARE_MATCH_B];
@@ -608,6 +614,7 @@ ISR (TIMER1_COMPB_vect)
 		callback();
 }
 
+/// \private Timer1 output compare C interrupt service routine.
 ISR (TIMER1_COMPC_vect)
 {
 	timer_callback callback = timer_interrupt_callback[1][TIT_OUTPUT_COMPARE_MATCH_C];
@@ -615,6 +622,7 @@ ISR (TIMER1_COMPC_vect)
 		callback();
 }
 
+/// \private Timer2 overflow interrupt service routine.
 ISR (TIMER2_OVF_vect)
 {
 	timer_callback callback = timer_interrupt_callback[2][TIT_OVERFLOW];
@@ -622,6 +630,7 @@ ISR (TIMER2_OVF_vect)
 		callback();
 }
 
+/// \private Timer2 output compare A interrupt service routine.
 ISR (TIMER2_COMPA_vect)
 {
 	timer_callback callback = timer_interrupt_callback[2][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -629,6 +638,7 @@ ISR (TIMER2_COMPA_vect)
 		callback();
 }
 
+/// \private Timer2 output compare B interrupt service routine.
 ISR (TIMER2_COMPB_vect)
 {
 	timer_callback callback = timer_interrupt_callback[2][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -636,6 +646,7 @@ ISR (TIMER2_COMPB_vect)
 		callback();
 }
 
+/// \private Timer3 overflow interrupt service routine.
 ISR (TIMER3_OVF_vect)
 {
 	timer_callback callback = timer_interrupt_callback[3][TIT_OVERFLOW];
@@ -643,6 +654,7 @@ ISR (TIMER3_OVF_vect)
 		callback();
 }
 
+/// \private Timer3 output compare A interrupt service routine.
 ISR (TIMER3_COMPA_vect)
 {
 	timer_callback callback = timer_interrupt_callback[3][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -650,6 +662,7 @@ ISR (TIMER3_COMPA_vect)
 		callback();
 }
 
+/// \private Timer3 output compare B interrupt service routine.
 ISR (TIMER3_COMPB_vect)
 {
 	timer_callback callback = timer_interrupt_callback[3][TIT_OUTPUT_COMPARE_MATCH_B];
@@ -657,6 +670,7 @@ ISR (TIMER3_COMPB_vect)
 		callback();
 }
 
+/// \private Timer3 output compare C interrupt service routine.
 ISR (TIMER3_COMPC_vect)
 {
 	timer_callback callback = timer_interrupt_callback[3][TIT_OUTPUT_COMPARE_MATCH_C];
@@ -664,6 +678,7 @@ ISR (TIMER3_COMPC_vect)
 		callback();
 }
 
+/// \private Timer4 overflow interrupt service routine.
 ISR (TIMER4_OVF_vect)
 {
 	timer_callback callback = timer_interrupt_callback[4][TIT_OVERFLOW];
@@ -671,6 +686,7 @@ ISR (TIMER4_OVF_vect)
 		callback();
 }
 
+/// \private Timer4 output compare A interrupt service routine.
 ISR (TIMER4_COMPA_vect)
 {
 	timer_callback callback = timer_interrupt_callback[4][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -678,6 +694,7 @@ ISR (TIMER4_COMPA_vect)
 		callback();
 }
 
+/// \private Timer4 output compare B interrupt service routine.
 ISR (TIMER4_COMPB_vect)
 {
 	timer_callback callback = timer_interrupt_callback[4][TIT_OUTPUT_COMPARE_MATCH_B];
@@ -685,6 +702,7 @@ ISR (TIMER4_COMPB_vect)
 		callback();
 }
 
+/// \private Timer4 output compare C interrupt service routine.
 ISR (TIMER4_COMPC_vect)
 {
 	timer_callback callback = timer_interrupt_callback[4][TIT_OUTPUT_COMPARE_MATCH_C];
@@ -692,6 +710,7 @@ ISR (TIMER4_COMPC_vect)
 		callback();
 }
 
+/// \private Timer5 overflow interrupt service routine.
 ISR (TIMER5_OVF_vect)
 {
 	timer_callback callback = timer_interrupt_callback[5][TIT_OVERFLOW];
@@ -699,6 +718,7 @@ ISR (TIMER5_OVF_vect)
 		callback();
 }
 
+/// \private Timer5 output compare A interrupt service routine.
 ISR (TIMER5_COMPA_vect)
 {
 	timer_callback callback = timer_interrupt_callback[5][TIT_OUTPUT_COMPARE_MATCH_A];
@@ -706,6 +726,7 @@ ISR (TIMER5_COMPA_vect)
 		callback();
 }
 
+/// \private Timer5 output compare B interrupt service routine.
 ISR (TIMER5_COMPB_vect)
 {
 	timer_callback callback = timer_interrupt_callback[5][TIT_OUTPUT_COMPARE_MATCH_B];
@@ -713,6 +734,7 @@ ISR (TIMER5_COMPB_vect)
 		callback();
 }
 
+/// \private Timer5 output compare C interrupt service routine.
 ISR (TIMER5_COMPC_vect)
 {
 	timer_callback callback = timer_interrupt_callback[5][TIT_OUTPUT_COMPARE_MATCH_C];
