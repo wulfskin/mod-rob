@@ -1,3 +1,9 @@
+/*! \file serial.c
+    \brief Robotis serial connection interface with receive callback extension (declaration part, see serial.h for an interface description).
+ */
+
+ /// \cond Ignore this part of the documentation
+ 
 #include <avr/io.h>
 #include <stdio.h>
 #include <avr/interrupt.h>
@@ -144,14 +150,6 @@ SIGNAL(USART1_RX_vect)
 		rx_callback();
 }
 
-void serial_set_rx_callback(serial_rx_callback callback)
-{
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-	{
-		rx_callback = callback;
-	}
-}
-
 int std_putchar(char c)
 {
 	char tx[2];
@@ -184,4 +182,12 @@ int std_getchar(void)
     return rx;
 }
 
+/// \endcond
 
+void serial_set_rx_callback(serial_rx_callback callback)
+{
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+	{
+		rx_callback = callback;
+	}
+}
