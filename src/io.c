@@ -30,7 +30,7 @@ inline void led_init()
 	LED_OFF(LED_ALL);
 }
 
-inline uint8_t led_get(uint8_t led)
+inline uint8_t led_get(const uint8_t led)
 {
 	// Perform one cycle to update port states.
 	// This is necessary if the function was called directly after a set command.
@@ -63,7 +63,7 @@ inline void btn_init()
 	EICRB &= ~((1 << ISC71) | (1 << ISC61) | (1 << ISC51) | (1 << ISC41));
 }
 
-int io_set_interrupt(uint8_t io_port, io_callback callback)
+int io_set_interrupt(const uint8_t io_port, const io_callback callback)
 {
 	int res = 0;
 	uint8_t mask = io_port & IO_INTERRUPT_MASK;

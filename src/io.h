@@ -151,7 +151,7 @@ void led_init();
  * \param[in]	led		LEDs to check.
  * \returns Returns non-zero, in case _all_ specified LEDs are switched on.
  */
-uint8_t led_get(uint8_t led);
+uint8_t led_get(const uint8_t led);
 
 // *********************************************************************************
 // PORTD - BUTTONS AND MICROPHONE
@@ -244,7 +244,7 @@ if (io_set_interrupt(BTN_START, &btn_start_callback))
  * \note General interrupts must be enabled in order to make the interrupts work. To enable
  * them call the function _sei()_ before. 
  */
-int io_set_interrupt(uint8_t io_port, io_callback callback);
+int io_set_interrupt(const uint8_t io_port, const io_callback callback);
 
 /** Function to initialize the complete I/O peripheries.
  * This helper function initializes the complete I/O peripheries

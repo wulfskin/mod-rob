@@ -37,7 +37,7 @@ int serial_get_qstate(void);
 	\note General interrupts must be enabled in order to make the interrupts work. To enable
 	them call the function _sei()_ before. 
  */
-void serial_set_rx_callback(serial_rx_callback callback);
+void serial_set_rx_callback(const serial_rx_callback callback);
 
 #ifdef __cplusplus
 }

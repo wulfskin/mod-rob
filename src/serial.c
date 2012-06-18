@@ -184,7 +184,7 @@ int std_getchar(void)
 
 /// \endcond
 
-void serial_set_rx_callback(serial_rx_callback callback)
+void serial_set_rx_callback(const serial_rx_callback callback)
 {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 	{

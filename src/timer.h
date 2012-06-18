@@ -227,14 +227,14 @@ typedef enum {
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified prescaler is not supported by the timer.
  */
-int timer_set_prescaler(uint8_t timer, timer_prescaler prescaler);
+int timer_set_prescaler(const uint8_t timer, const timer_prescaler prescaler);
 
 /** Function to disable a timer.
 	\param[in]	timer		Timer to be used.
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid.
  */
-int timer_disable(uint8_t timer);
+int timer_disable(const uint8_t timer);
 
 /** Function to set the timer operation mode
 	This function sets the operation mode of a timer. Normally it is not necessary to call this function
@@ -246,7 +246,7 @@ int timer_disable(uint8_t timer);
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified operation mode is not supported by the timer.
  */
-int timer_set_mode(uint8_t timer, timer_operation_mode timer_mode);
+int timer_set_mode(const uint8_t timer, const timer_operation_mode timer_mode);
 
 /** Function to get a timer specific value.
 	This function reads a timer specific value.
@@ -259,7 +259,7 @@ int timer_set_mode(uint8_t timer, timer_operation_mode timer_mode);
 	The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified value is not available on the timer.
  */
-int timer_get_act_value(uint8_t timer, timer_value_type type, uint16_t * act_value);
+int timer_get_act_value(const uint8_t timer, const timer_value_type type, uint16_t * act_value);
 
 /** Function to set a timer specific value.
 	This function reads a timer specific value.
@@ -271,7 +271,7 @@ int timer_get_act_value(uint8_t timer, timer_value_type type, uint16_t * act_val
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified value is not available on the timer.
  */
-int timer_set_value(uint8_t timer, timer_value_type type, uint16_t new_value);
+int timer_set_value(const uint8_t timer, const timer_value_type type, const uint16_t new_value);
 
 /** Function to set a timer value.
 	\param[in]	timer		Timer to be used.
@@ -281,7 +281,7 @@ int timer_set_value(uint8_t timer, timer_value_type type, uint16_t new_value);
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified operation mode is not supported by the timer.
  */
-int timer_set(uint8_t timer, uint16_t new_value);
+int timer_set(const uint8_t timer, const uint16_t new_value);
 
 /** Function to get a timer value.
 	\param[in]	timer		Timer to be used.
@@ -292,14 +292,14 @@ int timer_set(uint8_t timer, uint16_t new_value);
 	The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified operation mode is not supported by the timer.
  */
-int timer_get(uint8_t timer, uint16_t * act_value);
+int timer_get(const uint8_t timer, uint16_t * act_value);
 
 /** Function to reset a timer to zero.
 	\param[in]	timer		Timer to be used.
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid.
  */
-int timer_reset(uint8_t timer);
+int timer_reset(const uint8_t timer);
 
 /** Function to initialize a timer with a certain operation mode and prescaler.
 	This function initializes a timer with a certain operation mode, prescaler and preset and starts counting.
@@ -313,7 +313,7 @@ int timer_reset(uint8_t timer);
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if any setting is not supported by the timer.
  */
-int timer_init(uint8_t timer, timer_operation_mode mode, timer_prescaler prescaler, uint16_t preset);
+int timer_init(const uint8_t timer, const timer_operation_mode mode, const timer_prescaler prescaler, const uint16_t preset);
 
 #ifndef TIMER_ENABLE_SIMPLE_INTERRUPTS
 
@@ -335,7 +335,7 @@ typedef void (*timer_callback)(void);
 	\returns The function returns #TIMER_ERROR_SUCCESS in case of success. The function fails with #TIMER_ERROR_INVALID_TIMER if
 	the specified timer is invalid or with #TIMER_ERROR_INVALID_OPERATION if the specified interrupt type is not supported by the timer.
  */
-int timer_set_interrupt(uint8_t timer, timer_interrupt_types interrupt_type, timer_callback callback);
+int timer_set_interrupt(const uint8_t timer, const timer_interrupt_types interrupt_type, const timer_callback callback);
 
 #endif
 

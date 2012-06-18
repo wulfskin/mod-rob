@@ -66,7 +66,7 @@ static volatile timer_callback timer_interrupt_callback[TIMER_AMOUNT][TIMER_INTE
 																							   };
 #endif
 
-int timer_set_prescaler(uint8_t timer, timer_prescaler prescaler)
+int timer_set_prescaler(const uint8_t timer, const timer_prescaler prescaler)
 {
 	uint8_t scaler = 0;
 	// Calculate prescaler bit-combination depending on available prescalers
@@ -123,30 +123,33 @@ int timer_set_prescaler(uint8_t timer, timer_prescaler prescaler)
 		return TIMER_ERROR_INVALID_OPERATION;
 }
 
-int timer_disable(uint8_t timer)
+int timer_disable(const uint8_t timer)
 {
 	// Disabling the prescaler clock is disabling the whole timer
 	return timer_set_prescaler(timer, TPS_DISABLED);
 }
 
-void timer0_set_mode(uint8_t mode, volatile uint8_t * control_register1, volatile uint8_t * control_register2)
+/// \private Internal function to set mode register on timer0.
+void timer0_set_mode(const uint8_t mode, volatile uint8_t * control_register1, volatile uint8_t * control_register2)
 {
 	*control_register1 = (*control_register1 & ~TIMER_MODE_REGISTER_MASK_0A) + (mode & TIMER_MODE_MASK_A);
 	*control_register2 = (*control_register2 & ~TIMER_MODE_REGISTER_MASK_0B) + ((mode & TIMER_MODE_MASK_B) << 1);	
 }
 
-void timer1_set_mode(uint8_t mode, volatile uint8_t * control_register1, volatile uint8_t * control_register2)
+/// \private Internal function to set mode register on timer1.
+void timer1_set_mode(const uint8_t mode, volatile uint8_t * control_register1, volatile uint8_t * control_register2)
 {
 	*control_register1 = (*control_register1 & ~TIMER_MODE_REGISTER_MASK_1A) + (mode & TIMER_MODE_MASK_A);
 	*control_register2 = (*control_register2 & ~TIMER_MODE_REGISTER_MASK_1B) + ((mode & TIMER_MODE_MASK_B) << 1);
 }	
 
-void timer2_set_mode(uint8_t mode, volatile uint8_t * control_register1, volatile uint8_t * control_register2)
+/// \private Internal function to set mode register on timer2.
+void timer2_set_mode(const uint8_t mode, volatile uint8_t * control_register1, volatile uint8_t * control_register2)
 {
 	timer0_set_mode(mode, control_register1, control_register2);
 }
 
-int timer_set_mode(uint8_t timer, timer_operation_mode timer_mode)
+int timer_set_mode(const uint8_t timer, const timer_operation_mode timer_mode)
 {
 	uint8_t mode = 0;
 	switch (timer)
@@ -205,7 +208,7 @@ int timer_set_mode(uint8_t timer, timer_operation_mode timer_mode)
 	return TIMER_ERROR_INVALID_OPERATION;		
 }
 
-int timer_get_act_value(uint8_t timer, timer_value_type type, uint16_t * act_value)
+int timer_get_act_value(const uint8_t timer, const timer_value_type type, uint16_t * act_value)
 {
 	// Check  for valid pointer
 	if (act_value == NULL)
@@ -326,7 +329,7 @@ int timer_get_act_value(uint8_t timer, timer_value_type type, uint16_t * act_val
 	}	
 }
 
-int timer_set_value(uint8_t timer, timer_value_type type, uint16_t new_value)
+int timer_set_value(const uint8_t timer, const timer_value_type type, const uint16_t new_value)
 {
 	// Do operation depending on timer
 	switch (timer)
@@ -443,22 +446,22 @@ int timer_set_value(uint8_t timer, timer_value_type type, uint16_t new_value)
 	}
 }
 
-int timer_set(uint8_t timer, uint16_t new_value)
+int timer_set(const uint8_t timer, const uint16_t new_value)
 {
 	return timer_set_value(timer, TVT_COUNTER_VALUE, new_value);	
 }
 
-int timer_get(uint8_t timer, uint16_t * act_value)
+int timer_get(const uint8_t timer, uint16_t * act_value)
 {
 	return timer_get_act_value(timer, TVT_COUNTER_VALUE, act_value);
 }
 
-int timer_reset(uint8_t timer)
+int timer_reset(const uint8_t timer)
 {
 	return timer_set(timer, 0);	
 }
 
-int timer_init(uint8_t timer, timer_operation_mode mode, timer_prescaler prescaler, uint16_t preset)
+int timer_init(const uint8_t timer, const timer_operation_mode mode, const timer_prescaler prescaler, const uint16_t preset)
 {
 	// Initialize result
 	int res = TIMER_ERROR_SUCCESS;
@@ -483,7 +486,7 @@ int timer_init(uint8_t timer, timer_operation_mode mode, timer_prescaler prescal
 }
 
 #ifndef TIMER_ENABLE_SIMPLE_INTERRUPTS
-int timer_set_interrupt(uint8_t timer, timer_interrupt_types interrupt_type, timer_callback callback)
+int timer_set_interrupt(const uint8_t timer, const timer_interrupt_types interrupt_type, const timer_callback callback)
 {
 	uint8_t interrupt = 0;
 	switch (timer)
