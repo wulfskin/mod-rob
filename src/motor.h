@@ -32,7 +32,7 @@ void motor_set_position(char id, uint16_t motor_position, char blocking);
 
 uint16_t motor_get_position(char);
 
-void motor_sync_move(uint8_t size, uint8_t * id, uint16_t * position, char blocking);
+void motor_sync_move(const uint8_t size, const uint8_t * id, const uint16_t * position, const char blocking);
 
 void PrintCommStatus(int CommStatus);
 

@@ -88,7 +88,7 @@ uint16_t motor_get_position(char id) {
 	return (uint16_t)read_data(id, PRESENT_POSITION_L);
 }
 
-void motor_sync_move(uint8_t size, uint8_t * id, uint16_t * position, char blocking) {
+void motor_sync_move(const uint8_t size, const uint8_t * id, const uint16_t * position, const char blocking) {
 	int i, CommStatus;
 	dxl_set_txpacket_id(MOTOR_BROADCAST_ID);
 	dxl_set_txpacket_instruction(INST_SYNC_WRITE);
