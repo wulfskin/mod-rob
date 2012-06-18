@@ -23,9 +23,24 @@
 #define MOVEMENT_BACKWARD		1
 #define MOVEMENT_RIGHT			2
 #define MOVEMENT_LEFT			3
+
+#define SENSOR_FRONT			2
+#define SENSOR_LEFT				6
+#define SENSOR_RIGHT			1
+
+#define SENSOR_FRONT_MIN_PROXIMITY		40
+#define SENSOR_FRONT_MAX_PROXIMITY		150
+
+#define SENSOR_LEFT_MAX_PROXIMITY		40
+#define SENSOR_RIGHT_MAX_PROXIMITY		40
+
+#define SENSOR_FRONT_NUMBER_OF_SAMPLES		64
+#define SENSOR_LEFT_NUMBER_OF_SAMPLES		16
+#define SENSOR_RIGHT_NUMBER_OF_SAMPLES		16
 		
 // Global variables
 volatile uint8_t global_release = 0;
+volatile uint8_t global_release_autonomous = 0;
 volatile uint8_t global_use_zigbee = 0;
 volatile uint32_t global_elapsed_time = 0; // elapsed time in ms
 volatile uint8_t global_movement_type = MOVEMENT_FORWARD;
@@ -66,6 +81,7 @@ void serial_receive_data(void){
 	
 	switch (data)
 	{
+		// Output motor positions
 		case 'p':
 		{
 			global_release = 0;
@@ -74,6 +90,17 @@ void serial_receive_data(void){
 				uint16_t v = motor_get_position(ids[i]);
 				printf("Motor %d position is %u\n", ids[i], v);
 			}
+			break;
+		}
+		
+		// Output sensor positions
+		case 'o':
+		{
+			global_release = 0;
+			uint16_t dist_front = sensor_read(SENSOR_FRONT, DISTANCE);
+			uint16_t dist_left = sensor_read(SENSOR_LEFT, IR);
+			uint16_t dist_right = sensor_read(SENSOR_RIGHT, IR);
+			printf("Sensors: Front: %3u, Left: %3u, Right: %3u.\n", dist_front, dist_left, dist_right);
 			break;
 		}
 		
@@ -109,7 +136,7 @@ void serial_receive_data(void){
 		{
 			global_release = 1;
 			global_movement_type = MOVEMENT_RIGHT;
-			printf("Going right.\n");
+			printf("Going right.\n");			
 			break;
 		}
 	
@@ -136,6 +163,17 @@ void serial_receive_data(void){
 				serial_set_wire();
 				printf("Using wired connection.\n");
 			}
+			break;
+		}
+		
+		// Enable autonomous control
+		case 'r':
+		{
+			global_release_autonomous ^= 1;
+			if (global_release_autonomous)
+				printf("Autonomous control activated.\n");
+			else
+				printf("Autonomous control deactivated.\n");
 			break;
 		}
 	}
@@ -177,8 +215,9 @@ void timer0_compare_match(void)
 int main() {
 	// Initialize motor
 	dxl_initialize(0,1);
-	// Initialize serial connection
+	// Initialize serial connection and active ZigBee
 	serial_initialize(57600);
+	serial_set_zigbee();
 	serial_set_rx_callback(&serial_receive_data);
 	// Initialize timer
 	uint8_t timer = 0;
@@ -188,18 +227,26 @@ int main() {
 	// Initialize I/O
 	io_init();
 	io_set_interrupt(BTN_START, &btn_press_start);
+	// Initialize sensors
+	sensor_init(SENSOR_FRONT, DISTANCE);
+	sensor_init(SENSOR_LEFT, IR);
+	sensor_init(SENSOR_RIGHT, IR);
 	// Enable global interrupts
 	sei();
 	// Define center position
 	const uint16_t center_pos[NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
 	// Go to center position
 	motor_sync_move(NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
-	// Declare variables
+	// Declare local variables
 	uint8_t release = 0;
 	uint32_t elapsed_time = 0;
 	uint32_t last_elapsed_time = 0;
 	uint8_t movement_type = 0;
 	uint8_t last_movement_type = 0;
+	uint16_t dist_front[SENSOR_FRONT_NUMBER_OF_SAMPLES], dist_front_avg = 0;
+	uint16_t dist_left[SENSOR_LEFT_NUMBER_OF_SAMPLES], dist_left_avg = 0;
+	uint16_t dist_right[SENSOR_RIGHT_NUMBER_OF_SAMPLES], dist_right_avg = 0;
+	uint8_t front_pointer = 0, left_pointer = 0, right_pointer = 0;
 	while(1)
 	{
 		// Copy global variables for local usage
@@ -209,9 +256,82 @@ int main() {
 			elapsed_time = global_elapsed_time;
 			movement_type = global_movement_type;
 		}
+		// Read sensor measurements
+		dist_front[front_pointer] = sensor_read(SENSOR_FRONT, DISTANCE);
+		if (++front_pointer >= SENSOR_FRONT_NUMBER_OF_SAMPLES)
+			front_pointer = 0;
+		dist_left[left_pointer] = sensor_read(SENSOR_LEFT, IR);
+		if (++left_pointer >= SENSOR_LEFT_NUMBER_OF_SAMPLES)
+			left_pointer = 0;
+		dist_right[right_pointer] = sensor_read(SENSOR_RIGHT, IR);
+		if (++right_pointer >= SENSOR_RIGHT_NUMBER_OF_SAMPLES)
+			right_pointer = 0;
+		// Calculate average
+		// Front
+		dist_front_avg = 0;
+		for (uint8_t i = 0; i < SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+			dist_front_avg += dist_front[i];
+		dist_front_avg /= SENSOR_FRONT_NUMBER_OF_SAMPLES;
+		// Left
+		dist_left_avg = 0;
+		for (uint8_t i = 0; i < SENSOR_LEFT_NUMBER_OF_SAMPLES; i++)
+			dist_left_avg += dist_left[i];
+		dist_left_avg /= SENSOR_LEFT_NUMBER_OF_SAMPLES;
+		// Right
+		dist_right_avg = 0;
+		for (uint8_t i = 0; i < SENSOR_RIGHT_NUMBER_OF_SAMPLES; i++)
+			dist_right_avg += dist_right[i];
+		dist_right_avg /= SENSOR_RIGHT_NUMBER_OF_SAMPLES;
 		// Check for release to move
 		if (release)
 		{
+			
+			// Check for autonomous control
+			if (global_release_autonomous)
+			{
+				// Autonomous movement logic
+				if (movement_type == MOVEMENT_FORWARD && dist_front_avg > SENSOR_FRONT_MAX_PROXIMITY)
+				{
+					for (uint8_t i = 0; i < SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+						dist_front[i] = SENSOR_FRONT_MAX_PROXIMITY;
+					printf("Going right, sensor: %d.\n", dist_front_avg);
+					movement_type = MOVEMENT_RIGHT;
+					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+					{
+						global_movement_type = movement_type;		
+					}
+				}				
+				else if ((movement_type == MOVEMENT_LEFT || movement_type == MOVEMENT_RIGHT) &&
+					dist_front_avg < SENSOR_FRONT_MIN_PROXIMITY)
+				{
+					printf("Going forward, sensor: %u.\n", dist_front_avg);
+					movement_type = MOVEMENT_FORWARD;
+					for (uint8_t i = 0; i < SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+						dist_front[i] = SENSOR_FRONT_MIN_PROXIMITY;
+					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+					{
+						global_movement_type = movement_type;
+					}					
+				}
+				else if (movement_type == MOVEMENT_LEFT && dist_left_avg > SENSOR_LEFT_MAX_PROXIMITY)
+				{
+					printf("Found left wall, sensor: %u.\n", dist_left_avg);
+					movement_type = MOVEMENT_RIGHT;
+					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+					{
+						global_movement_type = movement_type;
+					}				
+				}
+				else if (movement_type == MOVEMENT_RIGHT && dist_right_avg > SENSOR_RIGHT_MAX_PROXIMITY)
+				{
+					printf("Found right wall, sensor: %u.\n", dist_right_avg);
+					movement_type = MOVEMENT_LEFT;
+					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+					{
+						global_movement_type = movement_type;
+					}
+				}
+			}				
 			// Check for turn
 			if (movement_type != last_movement_type)
 			{
