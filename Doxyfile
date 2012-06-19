@@ -760,7 +760,7 @@ EXAMPLE_RECURSIVE      = NO
 # directories that contain image that are included in the documentation (see 
 # the \image command).
 
-IMAGE_PATH             = 
+IMAGE_PATH             = doc/img
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should 
 # invoke to filter for each input file. Doxygen will invoke the filter program 
@@ -939,7 +939,7 @@ HTML_EXTRA_FILES       =
 # 180 is cyan, 240 is blue, 300 purple, and 360 is red again. 
 # The allowed range is 0 to 359.
 
-HTML_COLORSTYLE_HUE    = 220
+HTML_COLORSTYLE_HUE    = 214
 
 # The HTML_COLORSTYLE_SAT tag controls the purity (or saturation) of 
 # the colors in the HTML output. For a value of 0 the output will use 
@@ -1236,7 +1236,7 @@ SERVER_BASED_SEARCH    = NO
 # If the GENERATE_LATEX tag is set to YES (the default) Doxygen will 
 # generate Latex output.
 
-GENERATE_LATEX         = YES
+GENERATE_LATEX         = NO
 
 # The LATEX_OUTPUT tag is used to specify where the LaTeX docs will be put. 
 # If a relative path is entered the value of OUTPUT_DIRECTORY will be 
