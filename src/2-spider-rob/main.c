@@ -15,63 +15,79 @@
 #include "../io.h"
 #include "../timer.h"
 
-#define NUMBER_OF_MOTORS				6
-#define MOTOR_UPDATE_POSITION_INTERVAL	20
-#define NUMBER_OF_MOVEMENTS				4
+/// Number of motors
+#define CONF_NUMBER_OF_MOTORS				6
+/// Delay between motor position updates
+#define CONF_MOTOR_UPDATE_POSITION_INTERVAL	20
+/// Number of different possible movement directions
+#define CONF_NUMBER_OF_MOVEMENTS				4
 
-#define MOVEMENT_FORWARD		0
-#define MOVEMENT_BACKWARD		1
-#define MOVEMENT_RIGHT			2
-#define MOVEMENT_LEFT			3
 
-#define SENSOR_FRONT			2
-#define SENSOR_LEFT				6
-#define SENSOR_RIGHT			1
+#define CONF_MOVEMENT_FORWARD		0
+#define CONF_MOVEMENT_BACKWARD		1
+#define CONF_MOVEMENT_RIGHT			2
+#define CONF_MOVEMENT_LEFT			3
 
-#define SENSOR_FRONT_MIN_PROXIMITY		40
-#define SENSOR_FRONT_MAX_PROXIMITY		150
+#define CONF_SENSOR_FRONT			2
+#define CONF_SENSOR_LEFT				6
+#define CONF_SENSOR_RIGHT			1
 
-#define SENSOR_LEFT_MAX_PROXIMITY		40
-#define SENSOR_RIGHT_MAX_PROXIMITY		40
+#define CONF_SENSOR_FRONT_MIN_PROXIMITY		60
+#define CONF_SENSOR_FRONT_MAX_PROXIMITY		150 
 
-#define SENSOR_FRONT_NUMBER_OF_SAMPLES		64
-#define SENSOR_LEFT_NUMBER_OF_SAMPLES		16
-#define SENSOR_RIGHT_NUMBER_OF_SAMPLES		16
+#define CONF_SENSOR_LEFT_MAX_PROXIMITY		40
+#define CONF_SENSOR_RIGHT_MAX_PROXIMITY		40
+
+#define CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES		128
+#define CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES		16
+#define CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES		16
 		
 // Global variables
 volatile uint8_t global_release = 0;
 volatile uint8_t global_release_autonomous = 0;
 volatile uint8_t global_use_zigbee = 0;
 volatile uint32_t global_elapsed_time = 0; // elapsed time in ms
-volatile uint8_t global_movement_type = MOVEMENT_FORWARD;
+volatile uint8_t global_movement_type = CONF_MOVEMENT_FORWARD;
 		
 // **********************************************
 // Configuration 
 // **********************************************
 // Motor IDs
-uint8_t ids[NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
+uint8_t ids[CONF_NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
 // Amplitude of oscillations
-const uint16_t amplitude[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
+const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
 	                                                                {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
 																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2},
 																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2} };
 // Frequency in Hz
-const float frequency[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {1, 1, 1, 1, 1, 1},
+const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {1, 1, 1, 1, 1, 1},
 	                                                             {1, 1, 1, 1, 1, 1},
 																 {1, 1, 1, 1, 1, 1},
 																 {1, 1, 1, 1, 1, 1} };
 // Phase angle in rad
-const float angle[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {M_PI/3, M_PI/3, 0, M_PI, M_PI/3, M_PI/3},
+const float angle[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {M_PI/3, M_PI/3, 0, M_PI, M_PI/3, M_PI/3},
 															 {M_PI/3, M_PI/3, M_PI, 0, M_PI/3, M_PI/3},
 															 {0, M_PI/3, M_PI/2, M_PI/2, M_PI/3, M_PI},
 															 {M_PI, M_PI/3, M_PI/2, M_PI/2, M_PI/3, 0} };
 // Offset
-const uint16_t offset[NUMBER_OF_MOVEMENTS][NUMBER_OF_MOTORS] = { {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630},
+const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630},
 																 {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630 },
 																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540},
 																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540} };
 
-
+/** Callback function for receiving data. 
+  The function uses serial_read to get data from serial buffer. Everytime a new data is received LED RXD is toggled.
+  Get data byte:
+    - p: Prints positions of all motors
+    - o: Prints values from sensors
+	- w: Robot go forward
+	- s: Robot go backward
+	- a: Robot go left
+	- d: Robot go right
+	- q: Stop or start robot
+	- z: Change between Zigbee and wired serial connection
+	- r: Change between autonomus or controled driving
+ */
 void serial_receive_data(void){
 	// Toggle receive LED
 	LED_TOGGLE(LED_RXD);
@@ -86,7 +102,7 @@ void serial_receive_data(void){
 		{
 			global_release = 0;
 			printf("\nPositions of motors:\n");
-			for (uint16_t i=0; i<6; i++) {
+			for (uint16_t i=0; i<CONF_NUMBER_OF_MOTORS; i++) {
 				uint16_t v = motor_get_position(ids[i]);
 				printf("Motor %d position is %u\n", ids[i], v);
 			}
@@ -97,9 +113,9 @@ void serial_receive_data(void){
 		case 'o':
 		{
 			global_release = 0;
-			uint16_t dist_front = sensor_read(SENSOR_FRONT, DISTANCE);
-			uint16_t dist_left = sensor_read(SENSOR_LEFT, IR);
-			uint16_t dist_right = sensor_read(SENSOR_RIGHT, IR);
+			uint16_t dist_front = sensor_read(CONF_SENSOR_FRONT, DISTANCE);
+			uint16_t dist_left = sensor_read(CONF_SENSOR_LEFT, IR);
+			uint16_t dist_right = sensor_read(CONF_SENSOR_RIGHT, IR);
 			printf("Sensors: Front: %3u, Left: %3u, Right: %3u.\n", dist_front, dist_left, dist_right);
 			break;
 		}
@@ -108,7 +124,7 @@ void serial_receive_data(void){
 		case 'w':
 		{
 			global_release = 1;
-			global_movement_type = MOVEMENT_FORWARD;
+			global_movement_type = CONF_MOVEMENT_FORWARD;
 			printf("Going forward.\n");
 			break;
 		}
@@ -117,7 +133,7 @@ void serial_receive_data(void){
 		case 's':
 		{
 			global_release = 1;
-			global_movement_type = MOVEMENT_BACKWARD;
+			global_movement_type = CONF_MOVEMENT_BACKWARD;
 			printf("Going backward.\n");
 			break;
 		}
@@ -126,7 +142,7 @@ void serial_receive_data(void){
 		case 'a':
 		{
 			global_release = 1;
-			global_movement_type = MOVEMENT_LEFT;
+			global_movement_type = CONF_MOVEMENT_LEFT;
 			printf("Going left.\n");
 			break;
 		}
@@ -135,7 +151,7 @@ void serial_receive_data(void){
 		case 'd':
 		{
 			global_release = 1;
-			global_movement_type = MOVEMENT_RIGHT;
+			global_movement_type = CONF_MOVEMENT_RIGHT;
 			printf("Going right.\n");			
 			break;
 		}
@@ -179,22 +195,32 @@ void serial_receive_data(void){
 	}
 }
 
+/**
+  Callback function for pressing start button.
+  Is called when start button is pressed.
+  Will toggle between robot running  not running mode.
+  */
 void btn_press_start(void)
 {
 	if (BTN_START_PRESSED)
 		global_release ^= 1;
 }
 
+/**
+  Updates the 
+
+ */
+/************************************************************************/
 void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
-	if (movement_type < NUMBER_OF_MOVEMENTS)
+	if (movement_type < CONF_NUMBER_OF_MOVEMENTS)
 	{
-		uint16_t pos[NUMBER_OF_MOTORS];
-		for (int i=0; i<NUMBER_OF_MOTORS; i++)
+		uint16_t pos[CONF_NUMBER_OF_MOTORS];
+		for (int i=0; i<CONF_NUMBER_OF_MOTORS; i++)
 		{
 			float c = cos(2 * M_PI * frequency[movement_type][i] * (float)time_in_ms / 1000 + angle[movement_type][i]);
 			pos[i] = amplitude[movement_type][i]*c + offset[movement_type][i];
 		}
-		motor_sync_move(NUMBER_OF_MOTORS, ids, pos, MOTOR_MOVE_NON_BLOCKING);		
+		motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, pos, MOTOR_MOVE_NON_BLOCKING);		
 	}
 }
 
@@ -228,24 +254,24 @@ int main() {
 	io_init();
 	io_set_interrupt(BTN_START, &btn_press_start);
 	// Initialize sensors
-	sensor_init(SENSOR_FRONT, DISTANCE);
-	sensor_init(SENSOR_LEFT, IR);
-	sensor_init(SENSOR_RIGHT, IR);
+	sensor_init(CONF_SENSOR_FRONT, DISTANCE);
+	sensor_init(CONF_SENSOR_LEFT, IR);
+	sensor_init(CONF_SENSOR_RIGHT, IR);
 	// Enable global interrupts
 	sei();
 	// Define center position
-	const uint16_t center_pos[NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
+	const uint16_t center_pos[CONF_NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
 	// Go to center position
-	motor_sync_move(NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
+	motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 	// Declare local variables
 	uint8_t release = 0;
 	uint32_t elapsed_time = 0;
 	uint32_t last_elapsed_time = 0;
 	uint8_t movement_type = 0;
 	uint8_t last_movement_type = 0;
-	uint16_t dist_front[SENSOR_FRONT_NUMBER_OF_SAMPLES], dist_front_avg = 0;
-	uint16_t dist_left[SENSOR_LEFT_NUMBER_OF_SAMPLES], dist_left_avg = 0;
-	uint16_t dist_right[SENSOR_RIGHT_NUMBER_OF_SAMPLES], dist_right_avg = 0;
+	uint16_t dist_front[CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES], dist_front_avg = 0;
+	uint16_t dist_left[CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES], dist_left_avg = 0;
+	uint16_t dist_right[CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES], dist_right_avg = 0;
 	uint8_t front_pointer = 0, left_pointer = 0, right_pointer = 0;
 	while(1)
 	{
@@ -257,31 +283,31 @@ int main() {
 			movement_type = global_movement_type;
 		}
 		// Read sensor measurements
-		dist_front[front_pointer] = sensor_read(SENSOR_FRONT, DISTANCE);
-		if (++front_pointer >= SENSOR_FRONT_NUMBER_OF_SAMPLES)
+		dist_front[front_pointer] = sensor_read(CONF_SENSOR_FRONT, DISTANCE);
+		if (++front_pointer >= CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES)
 			front_pointer = 0;
-		dist_left[left_pointer] = sensor_read(SENSOR_LEFT, IR);
-		if (++left_pointer >= SENSOR_LEFT_NUMBER_OF_SAMPLES)
+		dist_left[left_pointer] = sensor_read(CONF_SENSOR_LEFT, IR);
+		if (++left_pointer >= CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES)
 			left_pointer = 0;
-		dist_right[right_pointer] = sensor_read(SENSOR_RIGHT, IR);
-		if (++right_pointer >= SENSOR_RIGHT_NUMBER_OF_SAMPLES)
+		dist_right[right_pointer] = sensor_read(CONF_SENSOR_RIGHT, IR);
+		if (++right_pointer >= CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES)
 			right_pointer = 0;
 		// Calculate average
 		// Front
 		dist_front_avg = 0;
-		for (uint8_t i = 0; i < SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+		for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
 			dist_front_avg += dist_front[i];
-		dist_front_avg /= SENSOR_FRONT_NUMBER_OF_SAMPLES;
+		dist_front_avg /= CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES;
 		// Left
 		dist_left_avg = 0;
-		for (uint8_t i = 0; i < SENSOR_LEFT_NUMBER_OF_SAMPLES; i++)
+		for (uint8_t i = 0; i < CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES; i++)
 			dist_left_avg += dist_left[i];
-		dist_left_avg /= SENSOR_LEFT_NUMBER_OF_SAMPLES;
+		dist_left_avg /= CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES;
 		// Right
 		dist_right_avg = 0;
-		for (uint8_t i = 0; i < SENSOR_RIGHT_NUMBER_OF_SAMPLES; i++)
+		for (uint8_t i = 0; i < CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES; i++)
 			dist_right_avg += dist_right[i];
-		dist_right_avg /= SENSOR_RIGHT_NUMBER_OF_SAMPLES;
+		dist_right_avg /= CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES;
 		// Check for release to move
 		if (release)
 		{
@@ -290,42 +316,42 @@ int main() {
 			if (global_release_autonomous)
 			{
 				// Autonomous movement logic
-				if (movement_type == MOVEMENT_FORWARD && dist_front_avg > SENSOR_FRONT_MAX_PROXIMITY)
+				if (movement_type == CONF_MOVEMENT_FORWARD && dist_front_avg > CONF_SENSOR_FRONT_MAX_PROXIMITY)
 				{
-					for (uint8_t i = 0; i < SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
-						dist_front[i] = SENSOR_FRONT_MAX_PROXIMITY;
+					for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+						dist_front[i] = CONF_SENSOR_FRONT_MAX_PROXIMITY;
 					printf("Going right, sensor: %d.\n", dist_front_avg);
-					movement_type = MOVEMENT_RIGHT;
+					movement_type = CONF_MOVEMENT_RIGHT;
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 					{
 						global_movement_type = movement_type;		
 					}
 				}				
-				else if ((movement_type == MOVEMENT_LEFT || movement_type == MOVEMENT_RIGHT) &&
-					dist_front_avg < SENSOR_FRONT_MIN_PROXIMITY)
+				else if ((movement_type == CONF_MOVEMENT_LEFT || movement_type == CONF_MOVEMENT_RIGHT) &&
+					dist_front_avg < CONF_SENSOR_FRONT_MIN_PROXIMITY)
 				{
 					printf("Going forward, sensor: %u.\n", dist_front_avg);
-					movement_type = MOVEMENT_FORWARD;
-					for (uint8_t i = 0; i < SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
-						dist_front[i] = SENSOR_FRONT_MIN_PROXIMITY;
+					movement_type = CONF_MOVEMENT_FORWARD;
+					for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+						dist_front[i] = CONF_SENSOR_FRONT_MIN_PROXIMITY;
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 					{
 						global_movement_type = movement_type;
 					}					
 				}
-				else if (movement_type == MOVEMENT_LEFT && dist_left_avg > SENSOR_LEFT_MAX_PROXIMITY)
+				else if (movement_type == CONF_MOVEMENT_LEFT && dist_left_avg > CONF_SENSOR_LEFT_MAX_PROXIMITY)
 				{
 					printf("Found left wall, sensor: %u.\n", dist_left_avg);
-					movement_type = MOVEMENT_RIGHT;
+					movement_type = CONF_MOVEMENT_RIGHT;
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 					{
 						global_movement_type = movement_type;
 					}				
 				}
-				else if (movement_type == MOVEMENT_RIGHT && dist_right_avg > SENSOR_RIGHT_MAX_PROXIMITY)
+				else if (movement_type == CONF_MOVEMENT_RIGHT && dist_right_avg > CONF_SENSOR_RIGHT_MAX_PROXIMITY)
 				{
 					printf("Found right wall, sensor: %u.\n", dist_right_avg);
-					movement_type = MOVEMENT_LEFT;
+					movement_type = CONF_MOVEMENT_LEFT;
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 					{
 						global_movement_type = movement_type;
@@ -336,7 +362,7 @@ int main() {
 			if (movement_type != last_movement_type)
 			{
 				// Go to center position
-				motor_sync_move(NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
+				motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 				// Reset timer
 				timer_reset(timer);
 				// Update position
@@ -345,7 +371,7 @@ int main() {
 				last_movement_type = movement_type;
 			}
 			// Check if positions should be updated
-			if ((elapsed_time - last_elapsed_time) > MOTOR_UPDATE_POSITION_INTERVAL)
+			if ((elapsed_time - last_elapsed_time) > CONF_MOTOR_UPDATE_POSITION_INTERVAL)
 			{
 				update_motor_position((uint16_t)elapsed_time, movement_type);
 				// Store current time
