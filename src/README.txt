@@ -1,0 +1,4 @@
+/** \mainpage
+	In this folder the common firmware source code is located. Project specific code goes into their respective subfolders.
+
+ */
