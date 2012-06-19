@@ -1,6 +1,6 @@
 /** \mainpage
-	This is the documentation of the software from the team _Kick-Ass_ of the special course _31384 Modular Robotics_
-	2012 at the Technical University of Denmark. The team consists of the following four team members:
+	This is the documentation of the software from the team _Kick-Ass_ of the special course _31384 Modular Robotics 2012_
+	at the Technical University of Denmark. The team consists of the following four team members:
 	<ul>
 		<li><a href="mailto:s052332@student.dtu.dk">Dennis Hellner (s052332)</a></li>
 		<li><a href="mailto:s080147@student.dtu.dk">Hans-Peter Wolf (s111032</a></li>
@@ -45,5 +45,7 @@
 	The software is developed using <a href="http://www.atmel.com/microsite/atmel_studio6/">Atmel Studio 6</a> and 
 	<a href="http://winavr.sourceforge.net/">WinAVR</a> and its only dependency is the Robotis Dynamixel library which is also
 	provided with the source code. As there are no makefiles included it is recommend to use the provided Atmel Studio 6 projects
-	to compile. The source code is also found on <a href="https://github.com/wulfskin/mod-rob">GitHub/mod-rob</a>.
+	to compile. The source code is also found on <a href="https://github.com/wulfskin/mod-rob">GitHub/mod-rob</a>. The following
+	image provides an overview about the different software and hardware layers:
+	\image html layer_overview.jpg
  */
