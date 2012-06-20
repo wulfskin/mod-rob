@@ -238,9 +238,60 @@ void timer0_compare_match(void)
 		LED_TOGGLE(LED_AUX);
 }
 
-int main() {
+double calc_simple_moving_avg(uint16_t * value_buffer, uint8_t buffer_size, uint8_t * new_index, uint16_t new_value,
+	double old_moving_avg)
+{
+	// Check for validity of new buffer position
+	if (*new_index >= buffer_size)
+		*new_index = 0;
+	// Calculate new simple moving average
+	double new_moving_avg = old_moving_avg - (double)((double)value_buffer[*new_index] - (double)new_value) / buffer_size;
+	// Store new value in buffer
+	value_buffer[*new_index] = new_value;
+	// Increment buffer index
+	(*new_index)++;
+	// Return new value moving average
+	return new_moving_avg; 
+}
+
+int execute_autonomous_movement(uint8_t movement_type, uint16_t * dist_front_buffer,
+	double dist_front_avg, double dist_left_avg, double dist_right_avg)
+{
+	// Autonomous movement logic
+	if (movement_type == CONF_MOVEMENT_FORWARD && dist_front_avg > CONF_SENSOR_FRONT_MAX_PROXIMITY)
+	{
+		// Reset sensor buffer with correct values
+		for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+			dist_front_buffer[i] = CONF_SENSOR_FRONT_MAX_PROXIMITY;
+		printf("Going right, sensor: %.0f.\n", dist_front_avg);
+		return CONF_MOVEMENT_RIGHT;
+	}
+	else if ((movement_type == CONF_MOVEMENT_LEFT || movement_type == CONF_MOVEMENT_RIGHT) &&
+	dist_front_avg < CONF_SENSOR_FRONT_MIN_PROXIMITY)
+	{
+		// Reset sensor buffer with correct values
+		for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
+			dist_front_buffer[i] = CONF_SENSOR_FRONT_MIN_PROXIMITY;
+		printf("Going forward, sensor: %.0f.\n", dist_front_avg);
+		return CONF_MOVEMENT_FORWARD;
+	}
+	else if (movement_type == CONF_MOVEMENT_LEFT && dist_left_avg > CONF_SENSOR_LEFT_MAX_PROXIMITY)
+	{
+		printf("Found left wall, sensor: %.0f.\n", dist_left_avg);
+		return CONF_MOVEMENT_RIGHT;
+	}
+	else if (movement_type == CONF_MOVEMENT_RIGHT && dist_right_avg > CONF_SENSOR_RIGHT_MAX_PROXIMITY)
+	{
+		printf("Found right wall, sensor: %.0f.\n", dist_right_avg);
+		return CONF_MOVEMENT_LEFT;
+	}
+	else
+		return movement_type;
+}
+
+int main() {	
 	// Initialize motor
-	dxl_initialize(0,1);
+	dxl_initialize(0, 1);
 	// Initialize serial connection and active ZigBee
 	serial_initialize(57600);
 	serial_set_zigbee();
@@ -259,9 +310,8 @@ int main() {
 	sensor_init(CONF_SENSOR_RIGHT, IR);
 	// Enable global interrupts
 	sei();
-	// Define center position
+	// Center motor position
 	const uint16_t center_pos[CONF_NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
-	// Go to center position
 	motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 	// Declare local variables
 	uint8_t release = 0;
@@ -269,108 +319,66 @@ int main() {
 	uint32_t last_elapsed_time = 0;
 	uint8_t movement_type = 0;
 	uint8_t last_movement_type = 0;
-	uint16_t dist_front[CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES], dist_front_avg = 0;
-	uint16_t dist_left[CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES], dist_left_avg = 0;
-	uint16_t dist_right[CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES], dist_right_avg = 0;
-	uint8_t front_pointer = 0, left_pointer = 0, right_pointer = 0;
+	// Variables to calculate simple moving average
+	uint16_t dist_front_buffer[CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES];
+	double dist_front_avg = 0;
+	uint16_t dist_left_buffer[CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES];
+	double dist_left_avg = 0;
+	uint16_t dist_right_buffer[CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES];
+	double dist_right_avg = 0;
+	uint8_t dist_front_buffer_pointer = 0, dist_left_buffer_pointer = 0, dist_right_buffer_pointer = 0;
 	while(1)
 	{
-		// Copy global variables for local usage
+		// Copy global variables for local usage to avoid race conditions
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 		{
 			release = global_release;
 			elapsed_time = global_elapsed_time;
 			movement_type = global_movement_type;
 		}
-		// Read sensor measurements
-		dist_front[front_pointer] = sensor_read(CONF_SENSOR_FRONT, DISTANCE);
-		if (++front_pointer >= CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES)
-			front_pointer = 0;
-		dist_left[left_pointer] = sensor_read(CONF_SENSOR_LEFT, IR);
-		if (++left_pointer >= CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES)
-			left_pointer = 0;
-		dist_right[right_pointer] = sensor_read(CONF_SENSOR_RIGHT, IR);
-		if (++right_pointer >= CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES)
-			right_pointer = 0;
-		// Calculate average
-		// Front
-		dist_front_avg = 0;
-		for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
-			dist_front_avg += dist_front[i];
-		dist_front_avg /= CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES;
-		// Left
-		dist_left_avg = 0;
-		for (uint8_t i = 0; i < CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES; i++)
-			dist_left_avg += dist_left[i];
-		dist_left_avg /= CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES;
-		// Right
-		dist_right_avg = 0;
-		for (uint8_t i = 0; i < CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES; i++)
-			dist_right_avg += dist_right[i];
-		dist_right_avg /= CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES;
+		
+		// Read sensor measurements and calculate simple moving average to remove noise induced by movements
+		dist_front_avg = calc_simple_moving_avg(dist_front_buffer, CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES,
+			&dist_front_buffer_pointer, sensor_read(CONF_SENSOR_FRONT, DISTANCE), dist_front_avg);
+		dist_left_avg = calc_simple_moving_avg(dist_left_buffer, CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES,
+			&dist_left_buffer_pointer, sensor_read(CONF_SENSOR_LEFT, DISTANCE), dist_left_avg);
+		dist_right_avg = calc_simple_moving_avg(dist_right_buffer, CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES,
+			&dist_right_buffer_pointer, sensor_read(CONF_SENSOR_RIGHT, DISTANCE), dist_right_avg);
+
 		// Check for release to move
 		if (release)
 		{
 			
-			// Check for autonomous control
+			// Check if autonomous control is active and execute in case
 			if (global_release_autonomous)
 			{
-				// Autonomous movement logic
-				if (movement_type == CONF_MOVEMENT_FORWARD && dist_front_avg > CONF_SENSOR_FRONT_MAX_PROXIMITY)
+				uint8_t new_movement_type = execute_autonomous_movement(movement_type, dist_front_buffer,
+					dist_front_avg, dist_left_avg, dist_right_avg);
+				// Check for change in movement and update global variable in case
+				if (new_movement_type != movement_type)
 				{
-					for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
-						dist_front[i] = CONF_SENSOR_FRONT_MAX_PROXIMITY;
-					printf("Going right, sensor: %d.\n", dist_front_avg);
-					movement_type = CONF_MOVEMENT_RIGHT;
-					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-					{
-						global_movement_type = movement_type;		
-					}
-				}				
-				else if ((movement_type == CONF_MOVEMENT_LEFT || movement_type == CONF_MOVEMENT_RIGHT) &&
-					dist_front_avg < CONF_SENSOR_FRONT_MIN_PROXIMITY)
-				{
-					printf("Going forward, sensor: %u.\n", dist_front_avg);
-					movement_type = CONF_MOVEMENT_FORWARD;
-					for (uint8_t i = 0; i < CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES; i++)
-						dist_front[i] = CONF_SENSOR_FRONT_MIN_PROXIMITY;
-					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-					{
-						global_movement_type = movement_type;
-					}					
-				}
-				else if (movement_type == CONF_MOVEMENT_LEFT && dist_left_avg > CONF_SENSOR_LEFT_MAX_PROXIMITY)
-				{
-					printf("Found left wall, sensor: %u.\n", dist_left_avg);
-					movement_type = CONF_MOVEMENT_RIGHT;
-					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-					{
-						global_movement_type = movement_type;
-					}				
-				}
-				else if (movement_type == CONF_MOVEMENT_RIGHT && dist_right_avg > CONF_SENSOR_RIGHT_MAX_PROXIMITY)
-				{
-					printf("Found right wall, sensor: %u.\n", dist_right_avg);
-					movement_type = CONF_MOVEMENT_LEFT;
+					movement_type = new_movement_type;
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 					{
 						global_movement_type = movement_type;
 					}
 				}
-			}				
-			// Check for turn
+			}
+				
+			// Check for turn and execute in case
 			if (movement_type != last_movement_type)
 			{
 				// Go to center position
 				motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 				// Reset timer
 				timer_reset(timer);
-				// Update position
+				// Update position immediately
 				last_elapsed_time = 0;
 				// Store current value
 				last_movement_type = movement_type;
 			}
-			// Check if positions should be updated
+			
+			// Check for position update and execute in case
 			if ((elapsed_time - last_elapsed_time) > CONF_MOTOR_UPDATE_POSITION_INTERVAL)
 			{
 				update_motor_position((uint16_t)elapsed_time, movement_type);
@@ -378,6 +386,7 @@ int main() {
 				last_elapsed_time = elapsed_time;
 			}					
 		}
+		
 		// Print motor errors
 		PrintErrorCode();
 	}	
