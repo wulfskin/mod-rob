@@ -173,14 +173,14 @@ int main() {
 		//finger_in = (dist_finger >= CONF_FINGER_MIN_PROXIMITY);
 		if (dist_finger >= CONF_FINGER_PROXIMITY_IN)
 			finger_in_time = elapsed_time;
-		finger_in = (dist_finger >= CONF_FINGER_PROXIMITY_IN) || (elapsed_time < (finger_in_time + CONF_FINGER_IN_DELAY));
-		//finger_in = 1;
+		//finger_in = (dist_finger >= CONF_FINGER_PROXIMITY_IN) || (elapsed_time < (finger_in_time + CONF_FINGER_IN_DELAY));
+		finger_in = 1;
 		
 		// Debug prints
-		if (bite_request != bite_request_old)
-			printf("Bite request: %d.\n", bite_request);
-		if (finger_in != finger_in_old)
-			printf("Finger in: %d.\n", finger_in);
+		//if (bite_request != bite_request_old)
+		//	printf("Bite request: %d.\n", bite_request);
+		//if (finger_in != finger_in_old)
+		//	printf("Finger in: %d.\n", finger_in);
 		//printf("Sensor: %d %d.\n", dist_finger, finger_in);
 			
 		// Check if finger is in range
