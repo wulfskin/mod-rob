@@ -76,28 +76,28 @@ volatile uint8_t global_movement_type = CONF_MOVEMENT_FORWARD;
 // **********************************************
 // Configuration 
 // **********************************************
-/// ID names of the #CONF_NUMBER_OF_MOTORS (6) motors
+/// ID names of the #CONF_NUMBER_OF_MOTORS motors
 uint8_t ids[CONF_NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
-/// Amplitude of oscillations for each of #CONF_NUMBER_OF_MOTORS (6) in the #CONF_NUMBER_OF_MOVEMENTS (4) states.
+/// Amplitude of oscillations for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
 const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={
 																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
 																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
 																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2},
 																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2} };
-// Frequency in Hz for each of #CONF_NUMBER_OF_MOTORS (6) in the #CONF_NUMBER_OF_MOVEMENTS (4) states.
+// Frequency in Hz for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
 const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={ 
 																				{1,   1,   1,   1,   1,   1},
 																				{1,   1,   1,   1,   1,   1},
 																				{1,   1,   1,   1,   1,   1},
 																				{1,   1,   1,   1,   1,   1} };
-/// Phase angle in rad for each of #CONF_NUMBER_OF_MOTORS (6) in the #CONF_NUMBER_OF_MOVEMENTS (4) states.
+/// Phase angle in rad for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
 const float angle[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = {
 																				{M_PI/3,   M_PI/3,   0,        M_PI,     M_PI/3,   M_PI/3},
 																				{M_PI/3,   M_PI/3,   M_PI,     0,        M_PI/3,   M_PI/3},
 																				{0,        M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   M_PI},
 																				{M_PI,     M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   0} };
 																					
-/// Offset for each of #CONF_NUMBER_OF_MOTORS (6) in the #CONF_NUMBER_OF_MOVEMENTS (4) states.
+/// Offset for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
 const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = {
 																				{630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630},
 																				{630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630 },
