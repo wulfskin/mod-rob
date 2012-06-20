@@ -80,13 +80,13 @@ const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {630,
   Get data byte:
     - p: Prints positions of all motors
     - o: Prints values from sensors
-	- w: Robot go forward
-	- s: Robot go backward
-	- a: Robot go left
-	- d: Robot go right
-	- q: Stop or start robot
-	- z: Change between Zigbee and wired serial connection
-	- r: Change between autonomus or controled driving
+    - w: Robot go forward
+    - s: Robot go backward
+    - a: Robot go left
+    - d: Robot go right
+    - q: Stop or start robot
+    - z: Change between Zigbee and wired serial connection
+    - r: Change between autonomus or controled driving
  */
 void serial_receive_data(void){
 	// Toggle receive LED
@@ -207,10 +207,10 @@ void btn_press_start(void)
 }
 
 /**
-  Updates the 
-
+  Updates the positions of motors using the cosinus algorithm A*cos(2*pi*f*t + angle) + offset
+  \param[in]	time_in_ms		Is set from current time from the timer, and is used as t in the cosinus algorithm
+  \param[in]    movement_type	Decides what values is used for each motors amplitude, frequency, angle and offset.
  */
-/************************************************************************/
 void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
 	if (movement_type < CONF_NUMBER_OF_MOVEMENTS)
 	{
@@ -224,6 +224,10 @@ void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
 	}
 }
 
+/** 
+  Callback function for timer 0.
+  Timer is running in 1kHz and adds 1 to the global value global_elapsed_time.
+  */
 void timer0_compare_match(void)
 {
 	if (global_release)
@@ -289,6 +293,19 @@ int execute_autonomous_movement(uint8_t movement_type, uint16_t * dist_front_buf
 		return movement_type;
 }
 
+/**
+  main call function for the none-wheeled robot.
+  Initializes serial connection, dynamixel connection, timer0 and 3 sensors. 
+  Is running an infinity look:
+	- Calculates a mean value for each sensor inputs.
+	- When robot is in movement:
+	  - Movement control
+	    - When robot going forward and close to wall: Go right
+	    - When robot is going left or right and is away from wall: Go forward
+	    - When robot is going left and wall is close on left side: Go right
+	    - When robot is going right and wall is close on right side: Go left
+	  - Call update_motor_position function when timer value global_elapsed_time has riched time
+  */
 int main() {	
 	// Initialize motor
 	dxl_initialize(0, 1);
