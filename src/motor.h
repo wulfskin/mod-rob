@@ -24,6 +24,8 @@ int motor_get_mode(char);
 
 void motor_set_speed(char, int);
 
+void motor_set_speed_dir(char id, uint8_t percentage, char wise);
+
 int motor_get_speed(char);
 
 void motor_wait_finish(char id, uint16_t goal_position);
