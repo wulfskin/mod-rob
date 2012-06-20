@@ -1,6 +1,6 @@
 /*! \file motor_control_table.h
     \brief Symbolic definitions for the dynamixel internal RAM memory addresses.
-    See dynamixel documentation for detailed description
+    See <a href="http://support.robotis.com/en/product/dynamixel/ax_series/dxl_ax_actuator.htm"> Dynamixel documentation </a> for detailed description
  */
 
 #ifndef __MOTOR_CONTROL_TABLE

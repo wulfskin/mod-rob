@@ -1,3 +1,9 @@
+/*! \file error.c
+    \brief Led sequence that can be used to show errors at runtime (declaration part, see error.h for an interface description).
+	\author Walter Gambelunghe
+	\copyright GNU Public License V3
+	\date 2012
+*/
 
 #include <avr/io.h>
 #include <util/delay.h>

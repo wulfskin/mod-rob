@@ -1,6 +1,6 @@
 /*!
 \file motor.c
-\brief Interface to control the Dynamixel motors. See motor.h.
+\brief Interface to control the Dynamixel motors.(declaration part, see #motor.h for an interface description)
 \author Walter Gambelunghe
 	\copyright GNU Public License V3
 	\date 2012
@@ -37,15 +37,15 @@ int motor_get_mode(char id){
 }
 
 void motor_set_speed(char id, int motor_speed){
-	dxl_write_word(id, MOVING_SPEED_L, motor_speed);
+	dxl_write_word(id, MOVING_SPEED_L, motor_speed); //set motor speed
 }
 
 void motor_set_speed_dir(char id, uint8_t percentage, char wise){
 	uint16_t v=0;
-	v = (uint16_t) percentage*1023ul/100ul;
+	v = (uint16_t) percentage*1023ul/100ul; //convert percentage to 10 bit value
 	if (wise)
 		SET(v,10);	 //bit 10 is the direction bit 0 ccw, 1 cw
-	dxl_write_word(id, MOVING_SPEED_L, v);
+	dxl_write_word(id, MOVING_SPEED_L, v); //set speed
 }
 
 int motor_get_speed(char id) {
@@ -80,15 +80,14 @@ void motor_wait_finish(char id, uint16_t goal_position)
 }
 
 void motor_set_position(char id, uint16_t motor_position, char blocking) {
-	dxl_write_word(id, GOAL_POSITION_L, motor_position);
-	int CommStatus = dxl_get_result();
-	if (CommStatus == COMM_RXSUCCESS)
-	{
-		if (blocking == MOTOR_MOVE_BLOCKING)
+	dxl_write_word(id, GOAL_POSITION_L, motor_position); //set position
+	int CommStatus = dxl_get_result(); //check communication
+	if (CommStatus == COMM_RXSUCCESS)	{
+		if (blocking == MOTOR_MOVE_BLOCKING) //block until position reached
 			motor_wait_finish(id, motor_position);
 	}
 	else
-		PrintCommStatus(CommStatus);
+		PrintCommStatus(CommStatus);//communication failed, print error code
 }
 
 int read_data(char id, char which) {

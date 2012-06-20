@@ -1,9 +1,14 @@
-/*
- * main.c
- *
- * Created: 
- *  Author: Walter GAmbelunghe
- */ 
+/*! \file 1-wheeled-rob/main.c
+    \brief Runtime file with main function for the wheeled project 1
+	\author Walter Gambelunghe
+	\copyright GNU Public License V3
+	\date 2012
+	
+	\file 1-wheeled-rob/main.c
+	
+	\details \details This file implements the control logic for the autonomous wheeled robot in project 1, as shown
+	by the following flowchart.<br><img src="../../doc/img/wheeled_flowchart.jpg">
+*/
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
@@ -20,61 +25,85 @@
 #include "../io.h"
 #include "../timer.h"
 
+///Symbolic map for front sensor port
 #define SENSOR_FRONT		1
+///Symbolic map for front-left sensor port
 #define SENSOR_FRONTLEFT	3
+///Symbolic map for front-right sensor port
 #define SENSOR_FRONTRIGHT	4
+///Symbolic map for back-left sensor port
 #define SENSOR_BACKLEFT		2
+///Symbolic map for back-right sensor port
 #define SENSOR_BACKRIGHT	5
 
+/// Used to filter sensor values. Values below this lever will be treated as zero
 #define NOISE_LEVEL	5
 
+///Symbolic definition for left motor id
 #define MOTOR_LEFT	11
+///Symbolic definition for right motor id
 #define MOTOR_RIGHT 12
 
+///Maximum allowed speed in percentage. Used for adaptive speed calculation.
 #define MAX_SPEED_IN_PERCENTAGE 100ul
+///Minimum allowed speed in percentage. Used for adaptive speed calculation.
 #define MIN_SPEED_IN_PERCENTAGE 25ul
 
-#define DISTANCE_TO_BRAKE		200
-#define DISTANCE_TO_TURN		25
-#define DISTANCE_TO_RECOVER		10
 
-#define WALL_MODE	0		//Enable wall-following behavior
+#define DISTANCE_TO_BRAKE		200
+#define DISTANCE_TO_TURN			25
+
+///Symbolic definition for the stopped state
+#define STATE_STOPPED -1
+///Symbolic definition for the Braitenberg state
+#define STATE_BRAITENBERG 0
+///Symbolic definition for the wall-follow state
+#define STATE_FOLLOW 2
+
+///Enable/Disable wall-following behavior
+#define WALL_MODE	0		
 
 //Function prototypes
 void reset_state(void);
-int get_state();
+int get_state(void);
 void set_state(int new_state);
-void firmware_init();
-void controller_run();
+void firmware_init(void);
+void controller_run(void);
 
+/// Global status variable 
 static volatile int state = -1;
 
 int main() {
 	
-	firmware_init();
-	controller_run();
-	return 1;
+	firmware_init();	//initialize firmware
+	controller_run();	//run control logic
+	
+	return -1;	//should never get here
 }
+
 
 void firmware_init(){
 	// Initialize firmware
 	dxl_initialize(0,1);		//initialize dynamixel communication
-	serial_initialize(57600);	//initialize serial communication
+	serial_initialize(57600);		//initialize serial communication
+	
 	//initialize sensors
 	sensor_init(SENSOR_FRONT,SENSOR_DISTANCE);
 	sensor_init(SENSOR_FRONTLEFT,SENSOR_IR);
 	sensor_init(SENSOR_FRONTRIGHT,SENSOR_IR);
 	sensor_init(SENSOR_BACKLEFT,SENSOR_IR);
 	sensor_init(SENSOR_BACKRIGHT,SENSOR_IR);
+	
 	//initialize I/O
 	io_init();
-	io_set_interrupt(BTN_START, &reset_state);
+	io_set_interrupt(BTN_START, &reset_state); //assign callback function when start button is pressed 
 	
 	// Activate general interrupts
 	sei();
 	
 	// Set motors to wheel mode
 	motor_set_mode(254, MOTOR_WHEEL_MODE);
+	
 	// Set serial communication through ZigBee
 	serial_set_zigbee();
 	
@@ -82,17 +111,22 @@ void firmware_init(){
 
 controller_run(){
 	//Declare variables
+	///Store sensors readings
 	uint8_t ir_frontleft, ir_frontright, ir_backleft, ir_backright, dis_front;
-	int speed_left = 0, speed_right = 0;
-	int speed_diff = 0;
-	int offset = 10;
-	//uint8_t state = STATE_AVOID_OBSTACLES_DIFF;
 	
+	///Speeds to be managed by the control logic, without taking into account speed adaption
+	int speed_left = 0, speed_right = 0;
+	
+	///Speeds applied to the motors after adaptive speed calculation
+	uint16_t speed_l, speed_r;
+	
+	///Speed offset, to make sure initially heading slightly to the right and finally slightly to the left
+	int offset = 10;
+	
+	///Directions of the wheels
 	char direction_left = 0, direction_right = 0;
 	
-	uint16_t speed_l, speed_r;
-	printf("PROGRAM IS RUNNING!\n");
-
+	//main loop
 	while(1) {
 		//Read sensor values
 		dis_front = sensor_read(SENSOR_FRONT, SENSOR_DISTANCE);
@@ -111,14 +145,9 @@ controller_run(){
 		if (ir_backright < NOISE_LEVEL)
 		ir_backright = 0;
 		
-		//if (state == 0 && (ir_frontleft > DISTANCE_TO_TURN) && (ir_frontright > DISTANCE_TO_TURN))
-		//	state = 1;
-		//else if (state == 1 && (ir_frontleft < DISTANCE_TO_RECOVER) && (ir_frontright < DISTANCE_TO_RECOVER) && (dis_front < 100))
-		//	state = 0;
-		
 		switch (get_state())
 		{
-			case 0:
+			case STATE_BRAITENBERG:
 			{
 				// State 0: Avoid obstacles
 				LED_OFF(LED_PLAY);
@@ -128,7 +157,7 @@ controller_run(){
 					direction_left = MOTOR_CCW;		// Going forward
 					speed_left = 255;				//At full speed
 				}
-				else {								//close to an obstacle
+				else {		//close to an obstacle
 					direction_left = MOTOR_CW;		//Going backwards
 					speed_left = ir_frontright;		//speed proportional to obstacle distance (proximity)
 				}
@@ -146,35 +175,35 @@ controller_run(){
 				speed_right -= offset;
 				else
 				speed_left -= offset;
-				//If wall follow is activated
-				if (WALL_MODE)
+				
+				if (WALL_MODE) //If wall follow mode is activated
 				{
 					if(ir_backleft > 80) //If close to wall
 					{
-						set_state(2);	//Go to wall-follow state
+						set_state(STATE_FOLLOW);	//Go to wall-follow state
 					}
 				}
 				break;
 			}
 			
-			case 2:		// State 2: Follow the left wall
+			case STATE_FOLLOW:		// State: Follow the left wall
 			{
 				LED_ON(LED_AUX);
 				if (ir_frontleft < 20)	//too far
 				{
-					speed_left = 255-40;
+					speed_left = 255-40;	//Head towards the wall
 					speed_right = 255;
 				}
 				else
 				{						//too close
-					speed_left = 255;
+					speed_left = 255;	//head away from the wall
 					speed_right = 255-40;
 				}
 				// Go forward
 				direction_left = MOTOR_CCW;
 				direction_right = MOTOR_CW;
 				if (ir_frontleft == 0)	{	//If arrived to the end of the wall
-					set_state(0);			//Return to Obstacle avoidance state
+					set_state(STATE_BRAITENBERG);			//Return to Obstacle avoidance state
 					offset = -offset;		//Invert speed offset (always head slightly to the left)
 				}		
 				break;
@@ -186,40 +215,39 @@ controller_run(){
 				speed_right = 0;
 				break;
 			}
-		}
+		}//close switch statement
 		
 		//Calculate front distance, providing min distance to be able to stop/turn on time
 		uint8_t dist = 0;
 		if (DISTANCE_TO_BRAKE > dis_front)
-		dist = DISTANCE_TO_BRAKE - dis_front;
+			dist = DISTANCE_TO_BRAKE - dis_front;
 		else
-		dist = 0;
+			dist = 0;
 		//unless already turning
 		if (direction_left == MOTOR_CW && direction_right == MOTOR_CCW)
-		dist = 255;
+			dist = 255;
 		
 		//Adjust speed according to distance
 		uint8_t speed = (uint8_t)(MAX_SPEED_IN_PERCENTAGE * (uint32_t)dist / DISTANCE_TO_BRAKE);
 		if (speed < MIN_SPEED_IN_PERCENTAGE)
 		speed = MIN_SPEED_IN_PERCENTAGE;
 		
-		//Calculate motors' speed
+		//Calculate motors speed
 		speed_l = (uint16_t) ((speed_left<<2) * (uint32_t)speed / 100ul);
 		speed_r = (uint16_t) ((speed_right<<2) * (uint32_t)speed / 100ul);
 		
-		//Set motors' speed and direction
+		//Apply motors speed and direction
 		motor_set_speed_dir(MOTOR_LEFT, speed_l, direction_left);
 		motor_set_speed_dir(MOTOR_RIGHT, speed_r, direction_right);
 
-		
-		//printf("f= %3u, fl= %3u, fr=%3u, bl= %3u, br=%3u, speed=%3d, speed_l=%3u, speed_r=%3u,\n",dis_front,ir_frontleft,ir_frontright,ir_backleft, ir_backright, speed_diff, speed_l, speed_r);
-	}
-}
+	}//close main loop
+}//close main function
 
 void reset_state() {
 	if (BTN_START_PRESSED)
 		state = 0;
 }
+
 
 int get_state() {
 	int loc_state = 0;
@@ -228,6 +256,7 @@ int get_state() {
 	}
 	return loc_state;
 }
+
 
 void set_state(int new_state) {
 	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {

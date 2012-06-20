@@ -5,9 +5,9 @@
 	\copyright GNU Public License V3
 	\date 2012
 
-	\file motor.h.h
+	\file motor.h
 	\detail This is a wrapper library encapsulating the provided dynamixel library. It provides functions to easily control the motors.
-		See the dynamixel documentation for further details.
+		See the <a href="http://support.robotis.com/en/software/dynamixel_sdk/api_reference.htm"> Dynamixel SDK documentation </a> for further details.
 */
 #ifndef __MOTOR_H
 #define __MOTOR_H
@@ -51,7 +51,7 @@ void motor_move(char id, uint16_t motor_position, char blocking);
 * This function can be used to set motor to either Wheel mode or Joint mode.
 * \param [in] id The id of the motor to move. 
 * Valid arguments are unsigned integer numbers or #MOTOR_BROADCAST_ID
-* \param[in] mode The desired mode to be set. Valid valueas are #MOTOR_WHEEL_MODE or MOTOR_JOINT_MODE
+* \param[in] mode The desired mode to be set. Valid valueas are #MOTOR_WHEEL_MODE or #MOTOR_JOINT_MODE
 */
 void motor_set_mode(char id ,int mode);
 
@@ -167,7 +167,23 @@ It must be of the size specified in the first argument.
 */
 void motor_sync_move(const uint8_t size, const uint8_t * id, const uint16_t * position, const char blocking);
 
+/** Function to print communication error status.
+* This function can be used to output 
+\par Example:
+ \code
+int result = dxl_get_result();       //check communication
+	if (result != COMM_RXSUCCESS) //if communication failed
+		PrintCommStatus(result);  //print error
+ \endcode
+* \param [in] result Should be the return value of dxl_get_result() function defined in dynamixel.h  
+* \note This function was in the example code that came with the Dynamixel SDK
+*/
+
 void PrintCommStatus(int CommStatus);
+
+/** Function to print motor error status (overheat,  input voltage error, etc...).
+* \note This function was in the example code that came with the Dynamixel SDK
+*/
 
 void PrintErrorCode();
 
