@@ -1,8 +1,8 @@
 /*
- * Navigationtest_old.c
+ * main.c
  *
  * Created: 
- *  Author: Dennis Hellner
+ *  Author: Walter GAmbelunghe
  */ 
 #include <stdio.h>
 #include <avr/io.h>
@@ -20,83 +20,68 @@
 #include "../io.h"
 #include "../timer.h"
 
-#define SENSOR_FRONT 1
-#define SENSOR_FRONTLEFT 3
-#define SENSOR_FRONTRIGHT 4
-#define SENSOR_BACKLEFT 2
-#define SENSOR_BACKRIGHT 5
-#define MOTOR_LEFT 11
+#define SENSOR_FRONT		1
+#define SENSOR_FRONTLEFT	3
+#define SENSOR_FRONTRIGHT	4
+#define SENSOR_BACKLEFT		2
+#define SENSOR_BACKRIGHT	5
+
+#define NOISE_LEVEL	5
+
+#define MOTOR_LEFT	11
 #define MOTOR_RIGHT 12
 
 #define MAX_SPEED_IN_PERCENTAGE 100ul
 #define MIN_SPEED_IN_PERCENTAGE 25ul
-#define DISTANCE_TO_BRAKE	200
 
+#define DISTANCE_TO_BRAKE		200
 #define DISTANCE_TO_TURN		25
 #define DISTANCE_TO_RECOVER		10
 
-#define WALL_MODE	0
+#define WALL_MODE	0		//Enable wall-following behavior
 
-#define NOISE_LEVEL	5
-
-void timer0_compA()
-{
-	; // Do something every ms	
-};
-
-int timer0_initialize()
-{	
-	return 0;
-}
+//Function prototypes
+void reset_state(void);
+int get_state();
+void set_state(int new_state);
+void firmware_init();
+void controller_run();
 
 static volatile int state = -1;
 
-void reset_state()
-{
-	if (BTN_START_PRESSED)
-		state = 0;
-}
-
-int get_state()
-{
-	int loc_state = 0;
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-	{
-		loc_state = state;
-	}	
-	return loc_state;
-}
-
-void set_state(int new_state)
-{
-	ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-	{
-		state = new_state;
-	}		
-}
-
 int main() {
-	timer0_initialize();
-	// Initialize stuff		
-	dxl_initialize(0,1);
-	serial_initialize(57600);
+	
+	firmware_init();
+	controller_run();
+	return 1;
+}
+
+void firmware_init(){
+	// Initialize firmware
+	dxl_initialize(0,1);		//initialize dynamixel communication
+	serial_initialize(57600);	//initialize serial communication
+	//initialize sensors
 	sensor_init(SENSOR_FRONT,SENSOR_DISTANCE);
 	sensor_init(SENSOR_FRONTLEFT,SENSOR_IR);
 	sensor_init(SENSOR_FRONTRIGHT,SENSOR_IR);
 	sensor_init(SENSOR_BACKLEFT,SENSOR_IR);
 	sensor_init(SENSOR_BACKRIGHT,SENSOR_IR);
+	//initialize I/O
 	io_init();
 	io_set_interrupt(BTN_START, &reset_state);
 	
-	// Active general interrupts
+	// Activate general interrupts
 	sei();
 	
-	// Set modes
+	// Set motors to wheel mode
 	motor_set_mode(254, MOTOR_WHEEL_MODE);
+	// Set serial communication through ZigBee
 	serial_set_zigbee();
 	
-	//dxl_write_word(254, 14, 1023);
-			
+}
+
+controller_run(){
+	//Declare variables
 	uint8_t ir_frontleft, ir_frontright, ir_backleft, ir_backright, dis_front;
 	int speed_left = 0, speed_right = 0;
 	int speed_diff = 0;
@@ -109,6 +94,7 @@ int main() {
 	printf("PROGRAM IS RUNNING!\n");
 
 	while(1) {
+		//Read sensor values
 		dis_front = sensor_read(SENSOR_FRONT, SENSOR_DISTANCE);
 		ir_frontleft = (sensor_read(SENSOR_FRONTLEFT, SENSOR_IR));
 		ir_frontright = (sensor_read(SENSOR_FRONTRIGHT, SENSOR_IR));
@@ -117,14 +103,14 @@ int main() {
 		
 		// Remove noise
 		if (ir_frontleft < NOISE_LEVEL)
-			ir_frontleft = 0;
+		ir_frontleft = 0;
 		if (ir_frontright < NOISE_LEVEL)
-			ir_frontright = 0;
+		ir_frontright = 0;
 		if (ir_backleft < NOISE_LEVEL)
-			ir_backleft = 0;
+		ir_backleft = 0;
 		if (ir_backright < NOISE_LEVEL)
-			ir_backright = 0;
-			
+		ir_backright = 0;
+		
 		//if (state == 0 && (ir_frontleft > DISTANCE_TO_TURN) && (ir_frontright > DISTANCE_TO_TURN))
 		//	state = 1;
 		//else if (state == 1 && (ir_frontleft < DISTANCE_TO_RECOVER) && (ir_frontright < DISTANCE_TO_RECOVER) && (dis_front < 100))
@@ -137,73 +123,60 @@ int main() {
 				// State 0: Avoid obstacles
 				LED_OFF(LED_PLAY);
 				LED_OFF(LED_AUX);
-			    // Going forward
-				if (ir_frontright < DISTANCE_TO_TURN) {
-				    direction_left = MOTOR_CCW;
-				    speed_left = 255;//-10*ir_frontright;
-			    }
-			    else {
-				    direction_left = MOTOR_CW;
-				    speed_left = ir_frontright;
-			    }
-			    // Going forward
-			    if (ir_frontleft < DISTANCE_TO_TURN) {
-				    direction_right = MOTOR_CW;
-				    speed_right = 255;//-10*ir_frontleft;
-			    }
-			    else {
-				    direction_right = MOTOR_CCW;
-				    speed_right = ir_frontleft;
-			    }
 				
-				if (offset > 0)
-					speed_right -= offset;
+				if (ir_frontright < DISTANCE_TO_TURN) { //no obstacle close
+					direction_left = MOTOR_CCW;		// Going forward
+					speed_left = 255;				//At full speed
+				}
+				else {								//close to an obstacle
+					direction_left = MOTOR_CW;		//Going backwards
+					speed_left = ir_frontright;		//speed proportional to obstacle distance (proximity)
+				}
+				// Going forward
+				if (ir_frontleft < DISTANCE_TO_TURN) { //same as above for the other wheel
+					direction_right = MOTOR_CW;
+					speed_right = 255;
+				}
+				else {
+					direction_right = MOTOR_CCW;
+					speed_right = ir_frontleft;
+				}
+				
+				if (offset > 0)		//apply speed offset to left/right wheel (before/after wall mode)
+				speed_right -= offset;
 				else
-					speed_left -= offset;
-				
+				speed_left -= offset;
+				//If wall follow is activated
 				if (WALL_MODE)
 				{
-					if(ir_backleft > 80)
+					if(ir_backleft > 80) //If close to wall
 					{
-						set_state(2);
+						set_state(2);	//Go to wall-follow state
 					}
-				}						
+				}
 				break;
 			}
-			/*
-			case 1:
+			
+			case 2:		// State 2: Follow the left wall
 			{
-				// State 1: Get out of stuck mode
-				LED_ON(LED_PLAY);
-				int speed_diff = ir_backleft - ir_backright;
-				speed_left = 255/2 - speed_diff;
-				direction_left = MOTOR_CW;
-				speed_right = 255/2 + speed_diff;
-				direction_right = MOTOR_CCW;
-
-				break;	
-			}
-			*/
-			case 2:
-			{
-				// State 2: Follow the left wall
 				LED_ON(LED_AUX);
-				if (ir_frontleft < 20)
+				if (ir_frontleft < 20)	//too far
 				{
 					speed_left = 255-40;
 					speed_right = 255;
 				}
 				else
-				{
+				{						//too close
 					speed_left = 255;
 					speed_right = 255-40;
 				}
 				// Go forward
 				direction_left = MOTOR_CCW;
 				direction_right = MOTOR_CW;
-				if (ir_frontleft == 0)
-					set_state(0);
-					offset = -offset;			
+				if (ir_frontleft == 0)	{	//If arrived to the end of the wall
+					set_state(0);			//Return to Obstacle avoidance state
+					offset = -offset;		//Invert speed offset (always head slightly to the left)
+				}		
 				break;
 			}
 			default:
@@ -212,33 +185,52 @@ int main() {
 				speed_left = 0;
 				speed_right = 0;
 				break;
-			}							
-        }		
+			}
+		}
 		
+		//Calculate front distance, providing min distance to be able to stop/turn on time
 		uint8_t dist = 0;
 		if (DISTANCE_TO_BRAKE > dis_front)
-			dist = DISTANCE_TO_BRAKE - dis_front;
+		dist = DISTANCE_TO_BRAKE - dis_front;
 		else
-			dist = 0;
-			
-	    if (direction_left == MOTOR_CW && direction_right == MOTOR_CCW)
-		 dist = 255;
-	
+		dist = 0;
+		//unless already turning
+		if (direction_left == MOTOR_CW && direction_right == MOTOR_CCW)
+		dist = 255;
+		
+		//Adjust speed according to distance
 		uint8_t speed = (uint8_t)(MAX_SPEED_IN_PERCENTAGE * (uint32_t)dist / DISTANCE_TO_BRAKE);
 		if (speed < MIN_SPEED_IN_PERCENTAGE)
-			speed = MIN_SPEED_IN_PERCENTAGE;		
-			
+		speed = MIN_SPEED_IN_PERCENTAGE;
+		
+		//Calculate motors' speed
 		speed_l = (uint16_t) ((speed_left<<2) * (uint32_t)speed / 100ul);
 		speed_r = (uint16_t) ((speed_right<<2) * (uint32_t)speed / 100ul);
 		
-		//printf("sl=%4d, sr=%4d, sl2=%4u, sr2=%4u\n", speed_left, speed_right, speed_l, speed_r);
-		
+		//Set motors' speed and direction
 		motor_set_speed_dir(MOTOR_LEFT, speed_l, direction_left);
-		motor_set_speed_dir(MOTOR_RIGHT, speed_r, direction_right);			
+		motor_set_speed_dir(MOTOR_RIGHT, speed_r, direction_right);
 
-		//printf("distance= %3d, left= %3d, right=%3d, speed_left=%3d, speed_right=%3d \n",touch,ir_left,ir_right,speed_left,speed_right);
-		printf("f= %3u, fl= %3u, fr=%3u, bl= %3u, br=%3u, speed=%3d, speed_l=%3u, speed_r=%3u,\n",dis_front,ir_frontleft,ir_frontright,ir_backleft, ir_backright, speed_diff, speed_l, speed_r);
+		
+		//printf("f= %3u, fl= %3u, fr=%3u, bl= %3u, br=%3u, speed=%3d, speed_l=%3u, speed_r=%3u,\n",dis_front,ir_frontleft,ir_frontright,ir_backleft, ir_backright, speed_diff, speed_l, speed_r);
 	}
-	return 0;
 }
 
+void reset_state() {
+	if (BTN_START_PRESSED)
+		state = 0;
+}
+
+int get_state() {
+	int loc_state = 0;
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		loc_state = state;
+	}
+	return loc_state;
+}
+
+void set_state(int new_state) {
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		state = new_state;
+	}
+}

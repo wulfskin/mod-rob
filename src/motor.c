@@ -1,32 +1,39 @@
+/*!
+\file motor.c
+\brief Interface to control the Dynamixel motors. See motor.h.
+\author Walter Gambelunghe
+	\copyright GNU Public License V3
+	\date 2012
+	*/
+
 #include "motor.h"
 #include "error.h"
 #include "macro.h"
 #include <stdio.h>
 #include <util/delay.h>
 
-/// Maximal allowed deviation from goal position.
+/// \private Maximal allowed deviation from goal position.
 #define MOTOR_MAX_DEVIATION		10
-/// Number of cycles allowed without robot moving.
+/// \private Number of cycles allowed without robot moving.
 #define MOTOR_MAX_CYCLES_WITHOUT_MOVING		20
 
-/// Delay in ms between motor commands to avoid flooding of serial port.
+/// \private Delay in ms between motor commands to avoid flooding of serial port.
 #define MOTOR_COMMAND_DELAY		5
 
-// Maximum time in ms to wait for a motor to finish its position
+/// \private Maximum time in ms to wait for a motor to finish its position
 #define MOTOR_MAX_TIMEOUT		2000ul
 
-int read_data(char,char);
 
 void motor_move(char id, uint16_t motor_position, char blocking) {
 	motor_set_position(id, motor_position, blocking);
 }
 
 void motor_set_mode(char id, int mode) {
-	dxl_write_word( id, 8, mode);
+	dxl_write_word( id, 8, mode);	//set motor mode
 }
 
 int motor_get_mode(char id){
-	return dxl_read_word(id,8);
+	return dxl_read_word(id,8);	//return current motor mode
 }
 
 void motor_set_speed(char id, int motor_speed){
@@ -37,12 +44,12 @@ void motor_set_speed_dir(char id, uint8_t percentage, char wise){
 	uint16_t v=0;
 	v = (uint16_t) percentage*1023ul/100ul;
 	if (wise)
-		SET(v,10); //bit 10 is the direction bit 0 ccw, 1 cw
+		SET(v,10);	 //bit 10 is the direction bit 0 ccw, 1 cw
 	dxl_write_word(id, MOVING_SPEED_L, v);
 }
 
 int motor_get_speed(char id) {
-	return dxl_read_word(id, PRESENT_SPEED_L);
+	return dxl_read_word(id, PRESENT_SPEED_L);	//return speed
 }
 
 void motor_wait_finish(char id, uint16_t goal_position)
@@ -84,86 +91,51 @@ void motor_set_position(char id, uint16_t motor_position, char blocking) {
 		PrintCommStatus(CommStatus);
 }
 
+int read_data(char id, char which) {
+	int value=dxl_read_word(id,which);  //read requested data
+	int result=dxl_get_result();		//check communication status
+	if(result==COMM_RXSUCCESS)	//communication succeded
+		return value;			//return read value
+	PrintCommStatus(result);		//communication failed, print error message
+	return 5000;				//return dummy value
+}
+
+
 uint16_t motor_get_position(char id) {
-	return (uint16_t)read_data(id, PRESENT_POSITION_L);
+	return (uint16_t)read_data(id, PRESENT_POSITION_L); //return current position
 }
 
 void motor_sync_move(const uint8_t size, const uint8_t * id, const uint16_t * position, const char blocking) {
 	int i, CommStatus;
-	dxl_set_txpacket_id(MOTOR_BROADCAST_ID);
-	dxl_set_txpacket_instruction(INST_SYNC_WRITE);
+	dxl_set_txpacket_id(MOTOR_BROADCAST_ID);		//set broadcast id 
+	dxl_set_txpacket_instruction(INST_SYNC_WRITE);	//set instruction type
 	dxl_set_txpacket_parameter(0, GOAL_POSITION_L); //memory area to write
 	dxl_set_txpacket_parameter(1, 2); //length of the data
 	
 	for(i=0;i<size;i++){
-		//dxl_set_txpacket_parameter(2+(3*i), *(id+i)); //id of the first
-		//dxl_set_txpacket_parameter(2+(3*i)+1, dxl_get_lowbyte(*(position+i)));//low byte for first data
-		//dxl_set_txpacket_parameter(2+(3*i)+2, dxl_get_highbyte(*(position+i)));//high byte for first data
-		dxl_set_txpacket_parameter(2+(3*i), id[i]); //id of the first
-		dxl_set_txpacket_parameter(2+(3*i)+1, dxl_get_lowbyte(position[i]));//low byte for first data
-		dxl_set_txpacket_parameter(2+(3*i)+2, dxl_get_highbyte(position[i]));//high byte for first data
+		dxl_set_txpacket_parameter(2+(3*i), id[i]);  //id
+		dxl_set_txpacket_parameter(2+(3*i)+1, dxl_get_lowbyte(position[i]));//low byte
+		dxl_set_txpacket_parameter(2+(3*i)+2, dxl_get_highbyte(position[i]));//high byte
 	}
 	
-	dxl_set_txpacket_length((2+1)*size+4);
-	dxl_txrx_packet();
-	CommStatus = dxl_get_result();
-	if( CommStatus == COMM_RXSUCCESS ){
-		PrintErrorCode();
-		if (blocking == MOTOR_MOVE_BLOCKING)
+	dxl_set_txpacket_length((2+1)*size+4);		//set packet length
+	dxl_txrx_packet();			//transmit packet
+	CommStatus = dxl_get_result();	//get transmission state
+	if( CommStatus == COMM_RXSUCCESS ){	//transmission succeded
+		PrintErrorCode();					//show potentiol motors error (overload, overheat,etc....)
+		if (blocking == MOTOR_MOVE_BLOCKING) //blocking function requested
 		{
 			// Wait for finish of all motors
 			for (i = 0; i < size; i++)
 				motor_wait_finish(id[i], position[i]);
 		}			
 	}		
-	else
-		PrintCommStatus(CommStatus);
-}
-
-int read_data(char id, char which) {
-	int value=dxl_read_word(id,which);
-	int result=dxl_get_result();
-	if(result==COMM_RXSUCCESS)
-		return value;
-	switch(result){
-		case COMM_TXSUCCESS:{
-			printf("Read status: COMM_TXSUCCESS ");
-			break;
-		}
-		/*case COMM_RXSUCCESS:{
-			printf("Read status:  COMM_RXSUCCESS ");
-			break;
-		}*/
-		case COMM_TXFAIL:{
-			printf("Read status:  COMM_TXFAIL ");
-			break;
-		}
-		case COMM_RXFAIL:{
-			printf("Read status: COMM_RXFAIL ");
-			break;
-		}
-		case COMM_TXERROR:{
-					printf("Read status: COMM_TXERROR ");
-			break;
-		}
-		case COMM_RXWAITING:{
-		printf("Read status: COMM_RXWAITING ");
-			break;
-		}
-		case COMM_RXTIMEOUT:{
-			printf("Read status:COMM_RXTIMEOUT ");
-			break;
-		}
-		case COMM_RXCORRUPT:{
-			printf("Read status:COMM_RXCORRUPT ");
-			break;
-		}
-	}		
-	return 5000;
+	else							//communication failed
+		PrintCommStatus(CommStatus);	//show communication error
 }
 
 
-// Print communication result
+// Print communication error
 void PrintCommStatus(int CommStatus)
 {
 	switch(CommStatus)
