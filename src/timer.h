@@ -169,7 +169,7 @@ typedef enum {
 	/// Set prescaler to clock frequency / 256
 	TPS_DIV_256 = 0x64,
 	/// Set prescaler to clock frequency / 1024
-	TPS_DIV_1028 = 0x75
+	TPS_DIV_1024 = 0x75
 	// Future work: External clock not supported yet
 } timer_prescaler;
 
