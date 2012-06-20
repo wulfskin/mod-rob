@@ -60,7 +60,7 @@ const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={
 																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
 																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2},
 																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2} };
-/// Frequency in Hz
+// Frequency in Hz
 const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={ 
 																				{1,   1,   1,   1,   1,   1},
 																				{1,   1,   1,   1,   1,   1},
