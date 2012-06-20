@@ -1,3 +1,14 @@
+/*! \file 2-nonwheeled-rob/main.c
+    \brief Runtime file with main function for the none-wheeled project 2 and 3
+	\author Dennis Hellner
+	\author Hans-Peter Wolf
+	\copyright GNU Public License V3
+	\date 2012
+	
+	\file 2-nonwheeled-rob/main.c
+	
+	\details This file ... Show diagram
+*/
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
