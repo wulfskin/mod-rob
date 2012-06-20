@@ -1,6 +1,7 @@
-/**CONTROL TABLE
-* 	defines the dynamixel internal RAM memory addresses
-*/
+/*! \file motor_control_table.h
+    \brief Symbolic definitions for the dynamixel internal RAM memory addresses.
+    See dynamixel documentation for detailed description
+ */
 
 #ifndef __MOTOR_CONTROL_TABLE
 #define __MOTOR_CONTROL_TABLE

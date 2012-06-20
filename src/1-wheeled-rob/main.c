@@ -80,11 +80,11 @@ int main() {
 	// Initialize stuff		
 	dxl_initialize(0,1);
 	serial_initialize(57600);
-	sensor_init(SENSOR_FRONT,DISTANCE);
-	sensor_init(SENSOR_FRONTLEFT,IR);
-	sensor_init(SENSOR_FRONTRIGHT,IR);
-	sensor_init(SENSOR_BACKLEFT,IR);
-	sensor_init(SENSOR_BACKRIGHT,IR);
+	sensor_init(SENSOR_FRONT,SENSOR_DISTANCE);
+	sensor_init(SENSOR_FRONTLEFT,SENSOR_IR);
+	sensor_init(SENSOR_FRONTRIGHT,SENSOR_IR);
+	sensor_init(SENSOR_BACKLEFT,SENSOR_IR);
+	sensor_init(SENSOR_BACKRIGHT,SENSOR_IR);
 	io_init();
 	io_set_interrupt(BTN_START, &reset_state);
 	
@@ -109,11 +109,11 @@ int main() {
 	printf("PROGRAM IS RUNNING!\n");
 
 	while(1) {
-		dis_front = sensor_read(SENSOR_FRONT, DISTANCE);
-		ir_frontleft = (sensor_read(SENSOR_FRONTLEFT, IR));
-		ir_frontright = (sensor_read(SENSOR_FRONTRIGHT, IR));
-		ir_backleft = sensor_read(SENSOR_BACKLEFT, IR);
-		ir_backright = sensor_read(SENSOR_BACKRIGHT, IR);
+		dis_front = sensor_read(SENSOR_FRONT, SENSOR_DISTANCE);
+		ir_frontleft = (sensor_read(SENSOR_FRONTLEFT, SENSOR_IR));
+		ir_frontright = (sensor_read(SENSOR_FRONTRIGHT, SENSOR_IR));
+		ir_backleft = sensor_read(SENSOR_BACKLEFT, SENSOR_IR);
+		ir_backright = sensor_read(SENSOR_BACKRIGHT, SENSOR_IR);
 		
 		// Remove noise
 		if (ir_frontleft < NOISE_LEVEL)
