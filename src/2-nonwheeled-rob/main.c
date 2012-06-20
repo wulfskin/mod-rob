@@ -1,3 +1,14 @@
+/*! \file 2-nonwheeled-rob/main.c
+    \brief Runtime file with main function for the none-wheeled project 2 and 3
+	\author Dennis Hellner
+	\author Hans-Peter Wolf
+	\copyright GNU Public License V3
+	\date 2012
+	
+	\file 2-nonwheeled-rob/main.c
+	
+	\details This file ... Show diagram
+*/
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
@@ -22,24 +33,37 @@
 /// Number of different possible movement directions
 #define CONF_NUMBER_OF_MOVEMENTS				4
 
-
+/// ID for movement direction forward
 #define CONF_MOVEMENT_FORWARD		0
+/// ID for movement direction backward
 #define CONF_MOVEMENT_BACKWARD		1
+/// ID for movement direction right
 #define CONF_MOVEMENT_RIGHT			2
+/// ID for movement direction left
 #define CONF_MOVEMENT_LEFT			3
 
+/// Port value for sensor in front (long distance)
 #define CONF_SENSOR_FRONT			2
+/// Port value for sensor at left (ir sensor)
 #define CONF_SENSOR_LEFT				6
+/// Port value for sensor at right (ir sensor)
 #define CONF_SENSOR_RIGHT			1
 
+/// Lower level for distance on front sensor for state "long away from wall"
 #define CONF_SENSOR_FRONT_MIN_PROXIMITY		60
+/// Upper level for distance on front sensor for state "Close to wall"
 #define CONF_SENSOR_FRONT_MAX_PROXIMITY		150 
 
+/// Upper level for distance on left sensor for state "Close to wall"
 #define CONF_SENSOR_LEFT_MAX_PROXIMITY		40
+/// Upper level for distance on right sensor for state "Close to wall"
 #define CONF_SENSOR_RIGHT_MAX_PROXIMITY		40
 
+/// Number of samples for calculating an average of values from front sensor
 #define CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES		128
+/// Number of samples for calculating an average of values from left sensor
 #define CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES		16
+/// Number of samples for calculating an average of values from right sensor
 #define CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES		16
 		
 // Global variables
@@ -52,28 +76,33 @@ volatile uint8_t global_movement_type = CONF_MOVEMENT_FORWARD;
 // **********************************************
 // Configuration 
 // **********************************************
-// Motor IDs
+/// ID names of the #CONF_NUMBER_OF_MOTORS motors
 uint8_t ids[CONF_NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
-// Amplitude of oscillations
-const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
-	                                                                {120 / 2, 44 / 2, 512/2 - 20, 512/2 - 20, 44 / 2, 120 / 2},
-																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2},
-																	{(995-540)/2, (512-480)/2, (512-350)/2, (512-350)/2, (512-480)/2, (995-540)/2} };
-// Frequency in Hz
-const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {1, 1, 1, 1, 1, 1},
-	                                                             {1, 1, 1, 1, 1, 1},
-																 {1, 1, 1, 1, 1, 1},
-																 {1, 1, 1, 1, 1, 1} };
-// Phase angle in rad
-const float angle[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {M_PI/3, M_PI/3, 0, M_PI, M_PI/3, M_PI/3},
-															 {M_PI/3, M_PI/3, M_PI, 0, M_PI/3, M_PI/3},
-															 {0, M_PI/3, M_PI/2, M_PI/2, M_PI/3, M_PI},
-															 {M_PI, M_PI/3, M_PI/2, M_PI/2, M_PI/3, 0} };
-// Offset
-const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = { {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630},
-																 {630, 556 + 50 - 70, 512/2+20, 512/2+20, 556 + 50 - 70, 630 },
-																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540},
-																 {(995-540)/2+540, (512-480)/2+480, (512-350)/2+350, (512-350)/2+350, (512-480)/2+480, (995-540)/2+540} };
+/// Amplitude of oscillations for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
+const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={
+																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
+																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
+																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2},
+																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2} };
+// Frequency in Hz for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
+const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={ 
+																				{1,   1,   1,   1,   1,   1},
+																				{1,   1,   1,   1,   1,   1},
+																				{1,   1,   1,   1,   1,   1},
+																				{1,   1,   1,   1,   1,   1} };
+/// Phase angle in rad for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
+const float angle[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = {
+																				{M_PI/3,   M_PI/3,   0,        M_PI,     M_PI/3,   M_PI/3},
+																				{M_PI/3,   M_PI/3,   M_PI,     0,        M_PI/3,   M_PI/3},
+																				{0,        M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   M_PI},
+																				{M_PI,     M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   0} };
+																					
+/// Offset for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
+const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = {
+																				{630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630},
+																				{630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630 },
+																				{(995-540)/2+540,   (512-480)/2+480,   (512-350)/2+350,   (512-350)/2+350,   (512-480)/2+480,   (995-540)/2+540},
+																				{(995-540)/2+540,   (512-480)/2+480,   (512-350)/2+350,   (512-350)/2+350,   (512-480)/2+480,   (995-540)/2+540} };
 
 /** Callback function for receiving data. 
   The function uses serial_read to get data from serial buffer. Everytime a new data is received LED RXD is toggled.
@@ -408,4 +437,4 @@ int main() {
 		PrintErrorCode();
 	}	
 	return 0;
-}
+} 
