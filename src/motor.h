@@ -6,7 +6,7 @@
 	\date 2012
 
 	\file motor.h
-	\detail This is a wrapper library encapsulating the provided dynamixel library. It provides functions to easily control the motors.
+	\details This is a wrapper library encapsulating the provided dynamixel library. It provides functions to easily control the motors.
 		See the <a href="http://support.robotis.com/en/software/dynamixel_sdk/api_reference.htm"> Dynamixel SDK documentation </a> for further details.
 */
 #ifndef __MOTOR_H
@@ -68,7 +68,6 @@ else
 \endcode
 * \param [in] id The id of the motor to move. 
 * Valid arguments are unsigned integer numbers or #MOTOR_BROADCAST_ID
-* \param[in] mode The desired mode to be set. Valid valueas are #MOTOR_WHEEL_MODE or #MOTOR_JOINT_MODE
 *\returns Returns the current operating mode, which should be checked against either #MOTOR_WHEEL_MODE or #MOTOR_JOINT_MODE
 */
 int motor_get_mode(char id);
@@ -92,7 +91,7 @@ void motor_set_speed(char id, int speed);
  \endcode 
 * \param [in] id The id of the motor to move. 
 * Valid arguments are unsigned integer numbers or #MOTOR_BROADCAST_ID 
-* \param [in] speed The desired speed in percentage.
+* \param [in] percentage The desired speed in percentage.
 * Valid values are in the range [0:100]
 * \param [in] wise The desired direction. Should be either #MOTOR_CW or #MOTOR_CCW.
 * \note This function only works if the specified motor is in Wheel mode. See #motor_set_mode and #motor_get_mode.
@@ -175,7 +174,7 @@ int result = dxl_get_result();       //check communication
 	if (result != COMM_RXSUCCESS) //if communication failed
 		PrintCommStatus(result);  //print error
  \endcode
-* \param [in] result Should be the return value of dxl_get_result() function defined in dynamixel.h  
+* \param [in] CommStatus Should be the return value of dxl_get_result() function defined in dynamixel.h  
 * \note This function was in the example code that came with the Dynamixel SDK
 */
 

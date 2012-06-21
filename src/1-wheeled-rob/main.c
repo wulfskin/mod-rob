@@ -7,7 +7,7 @@
 	\file 1-wheeled-rob/main.c
 	
 	\details \details This file implements the control logic for the autonomous wheeled robot in project 1, as shown
-	by the following flowchart.<br><img src="../../doc/img/wheeled_flowchart.jpg">
+	by the following flowchart.<br><img src="../../doc/img/wheeled_flowchart.jpg" height="500" width="300">
 */
 #include <stdio.h>
 #include <avr/io.h>
@@ -64,9 +64,13 @@
 #define WALL_MODE	0		
 
 //Function prototypes
+///Restart from Braitenberg mode
 void reset_state(void);
+///Returns current state
 int get_state(void);
+///Changes global state
 void set_state(int new_state);
+
 void firmware_init(void);
 void controller_run(void);
 
@@ -189,13 +193,13 @@ controller_run(){
 			case STATE_FOLLOW:		// State: Follow the left wall
 			{
 				LED_ON(LED_AUX);
-				if (ir_frontleft < 20)	//too far
-				{
+				if (ir_frontleft < 20)	
+				{					//too far
 					speed_left = 255-40;	//Head towards the wall
 					speed_right = 255;
 				}
 				else
-				{						//too close
+				{					//too close
 					speed_left = 255;	//head away from the wall
 					speed_right = 255-40;
 				}
@@ -203,7 +207,7 @@ controller_run(){
 				direction_left = MOTOR_CCW;
 				direction_right = MOTOR_CW;
 				if (ir_frontleft == 0)	{	//If arrived to the end of the wall
-					set_state(STATE_BRAITENBERG);			//Return to Obstacle avoidance state
+					set_state(STATE_BRAITENBERG);		//Return to Obstacle avoidance state
 					offset = -offset;		//Invert speed offset (always head slightly to the left)
 				}		
 				break;
@@ -242,7 +246,9 @@ controller_run(){
 
 	}//close main loop
 }//close main function
+/**
 
+*/
 void reset_state() {
 	if (BTN_START_PRESSED)
 		state = 0;
