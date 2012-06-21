@@ -10,6 +10,7 @@
 #include <avr/interrupt.h>
 #include <util/atomic.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../macro.h"
 #include "../sensor.h"
@@ -24,17 +25,25 @@
 #define CONF_SENSOR_FINGER	4
 #define CONF_BUTTON_BITE	3
 
-#define CONF_MOTOR_NUMBER	2
+#define CONF_SENSOR_FINGER2	2
+#define CONF_BUTTON_BITE2	1
+
+#define CONF_MOTOR_NUMBER	4
 #define CONF_MOTOR_MOVE		6
 #define CONF_MOTOR_STILL	1
+#define CONF_MOTOR_MOVE2	2
+#define CONF_MOTOR_STILL2	8
 
 #define CONF_MOTOR_STILL_OPEN		512
+#define CONF_MOTOR_STILL2_OPEN		512
 #define CONF_MOTOR_MOVE_OPEN		300
 #define CONF_MOTOR_MOVE_CLOSE		512
+#define CONF_MOTOR_MOVE2_OPEN		712
+#define CONF_MOTOR_MOVE2_CLOSE		512
 
 #define CONF_MOTOR_DISTANCE			10
 
-#define CONF_FINGER_PROXIMITY_IN	15
+#define CONF_FINGER_PROXIMITY_IN	32
 #define CONF_FINGER_PROXIMITY_OUT	14
 
 #define CONF_FINGER_IN_DELAY		1000ul
@@ -44,6 +53,23 @@
 
 /// Elapsed time in ms
 static volatile uint32_t global_elapsed_time = 0;
+
+#define CONF_TEXT_NUMBER_OF_CHARS	30
+#define CONF_TEXT_NUMBER_WIN_ROUND	4
+const char text_win_round[CONF_TEXT_NUMBER_WIN_ROUND][CONF_TEXT_NUMBER_OF_CHARS] = {
+                                                                                     "Good job!",
+									                                                 "You got me!",
+									                                                 "Well done!",
+									                                                 "This round is yours!"
+															                       };
+															
+#define CONF_TEXT_NUMBER_LOST_ROUND	4
+const char text_lost_round[CONF_TEXT_NUMBER_LOST_ROUND][CONF_TEXT_NUMBER_OF_CHARS] = {
+                                                                                       "Haha, I owned you!",
+																                       "How did that bite feel?",
+																                       "Did I injure you?",
+																                       "Better luck next time!"
+                                                                                     };															  	
 
 void timer0_compare_match()
 {
@@ -73,17 +99,17 @@ unsigned short get_seed()
 	return seed;
 }
 
-uint8_t do_scoring(uint8_t * hum_points, uint8_t * comp_points)
+uint8_t calc_score_and_check_for_win(uint8_t * hum_points, uint8_t * comp_points)
 {
 	uint8_t res = 0;
 	// Show result on LEDs
-	LED_OFF(LED_ALL);
+	LED_OFF(LED_PLAY || LED_PROGRAM || LED_MANAGE || LED_AUX || LED_RXD || LED_TXD);
 	if (*hum_points >= 1)
-	LED_ON(LED_PLAY);
+		LED_ON(LED_PLAY);
 	if (*hum_points >= 2)
-	LED_ON(LED_PROGRAM);
+		LED_ON(LED_PROGRAM);
 	if (*hum_points >= 3)
-	LED_ON(LED_MANAGE);
+		LED_ON(LED_MANAGE);
 	if (*hum_points > 3)
 	{
 		printf("Congratz! You win!\n");
@@ -92,11 +118,11 @@ uint8_t do_scoring(uint8_t * hum_points, uint8_t * comp_points)
 		res = 1;
 	}
 	if (*comp_points >= 1)
-	LED_ON(LED_AUX);
+		LED_ON(LED_AUX);
 	if (*comp_points >= 2)
-	LED_ON(LED_RXD);
+		LED_ON(LED_RXD);
 	if (*comp_points >= 3)
-	LED_ON(LED_TXD);
+		LED_ON(LED_TXD);
 	if (*comp_points > 3)
 	{
 		printf("I owned you!\n");
@@ -105,6 +131,39 @@ uint8_t do_scoring(uint8_t * hum_points, uint8_t * comp_points)
 		res = 1;
 	}
 	return res;
+}
+
+void print_random_text(const char * text_array, uint8_t array_size)
+{
+	uint8_t index = (random() % array_size) * CONF_TEXT_NUMBER_OF_CHARS;
+	char text[CONF_TEXT_NUMBER_OF_CHARS];
+	strncpy(text, &text_array[index], CONF_TEXT_NUMBER_OF_CHARS);
+	printf("%s \n", text);
+}
+
+#define TUNE_C 4186.009
+#define TUNE_D 4698.636
+#define TUNE_E 5274.041
+#define TUNE_F 5587.652
+#define TUNE_G 6271.927
+#define TUNE_A 7040.000
+#define TUNE_B 7902.133
+
+void play_note(double frequency, double length){
+	
+	double delay = 1000000/frequency/2;
+	double cycles = frequency * length/ 1000;
+	for (double i=0; i < cycles; i++) {
+		PORTB &= ~0x20;
+		for(double j=0;j<delay;j++){
+			_delay_us(1);
+		}
+		PORTB |= 0x20;
+		for(double j=0;j<delay;j++){
+			_delay_us(1);
+		}
+	}
+	
 }
 
 int main() {
@@ -129,11 +188,11 @@ int main() {
 	// Activate general interrupts
 	sei();
 	
-	printf("Welcome to SharkBite!\n");
+	printf("\n\nWelcome to SharkBite!\n\nPress start to begin new game.\n");
 	
 	// Open mouth
-	const uint8_t ids[CONF_MOTOR_NUMBER] = {CONF_MOTOR_STILL, CONF_MOTOR_MOVE};
-	uint16_t pos[CONF_MOTOR_NUMBER] = {CONF_MOTOR_STILL_OPEN, CONF_MOTOR_MOVE_OPEN};
+	const uint8_t ids[CONF_MOTOR_NUMBER] = {CONF_MOTOR_STILL, CONF_MOTOR_MOVE, CONF_MOTOR_STILL2, CONF_MOTOR_MOVE2};
+	uint16_t pos[CONF_MOTOR_NUMBER] = {CONF_MOTOR_STILL_OPEN, CONF_MOTOR_MOVE_OPEN, CONF_MOTOR_STILL2_OPEN, CONF_MOTOR_MOVE2_OPEN};
 	
 	motor_sync_move(CONF_MOTOR_NUMBER, ids, pos, MOTOR_MOVE_BLOCKING);
 	
@@ -145,13 +204,14 @@ int main() {
 
 	// Variables for timing and sensors
 	uint32_t elapsed_time = 0;
-	uint32_t future_timestamp = 0;
-	uint8_t dist_finger = 0, bitten = 0, last_bitten = 0;
+	uint32_t future_timestamp = 0, future_timestamp2 = 0;
+	uint8_t dist_finger = 0, dist_finger2 = 0, bitten = 0, last_bitten = 0, bitten2 = 0, last_bitten2 = 0;
 	uint32_t finger_in_time = 0;
 	
 	// Helper variables and edge detection
-	uint8_t bite_request = 0, bite_request_old = 0;
-	uint8_t finger_in = 0, finger_in_old = 0;
+	uint8_t bite_request = 0, bite_request_old = 0, bite_request2 = 0, bite_request2_old = 0;
+	uint8_t finger_in = 0, finger_in_old = 1;
+	int finger_in2 = 0;
 		
 	while(1) {
 		// Copy global variables 
@@ -160,21 +220,31 @@ int main() {
 			elapsed_time = global_elapsed_time;
 		}
 		
-		// Initialization of first time
+		// Calculate new future timestamp
 		if (!future_timestamp)
 			future_timestamp = get_random_future_timestamp(elapsed_time);
+		if (!future_timestamp2)
+			future_timestamp2 = get_random_future_timestamp(elapsed_time);
 			
 		// Read sensor values
 		dist_finger = sensor_read(CONF_SENSOR_FINGER, SENSOR_IR);
 		bitten = sensor_read(CONF_BUTTON_BITE, SENSOR_TOUCH);
+		dist_finger2 = sensor_read(CONF_SENSOR_FINGER2, SENSOR_IR);
+		bitten2 = sensor_read(CONF_BUTTON_BITE2, SENSOR_TOUCH);
 		
 		// Build internal flags
 		bite_request = (elapsed_time >= future_timestamp);
+		bite_request2 = (elapsed_time >= future_timestamp2);
 		//finger_in = (dist_finger >= CONF_FINGER_MIN_PROXIMITY);
 		if (dist_finger >= CONF_FINGER_PROXIMITY_IN)
 			finger_in_time = elapsed_time;
 		//finger_in = (dist_finger >= CONF_FINGER_PROXIMITY_IN) || (elapsed_time < (finger_in_time + CONF_FINGER_IN_DELAY));
-		finger_in = 1;
+		finger_in2 = 1;
+		if (finger_in2)
+			LED_ON(LED_POWER);
+		else
+			LED_OFF(LED_POWER);
+		//finger_in = 1;
 		
 		// Debug prints
 		//if (bite_request != bite_request_old)
@@ -184,7 +254,7 @@ int main() {
 		//printf("Sensor: %d %d.\n", dist_finger, finger_in);
 			
 		// Check if finger is in range
-		if (finger_in)
+		if (finger_in2)
 		{
 			if (bite_request)
 			{
@@ -200,7 +270,7 @@ int main() {
 					dist = CONF_MOTOR_MOVE_CLOSE - p;
 				if (bitten)
 				{
-					printf("Haha, I got you!\n");
+					print_random_text(text_lost_round[0], CONF_TEXT_NUMBER_LOST_ROUND);
 				}
 				// Open mouth in case the goal has been reached or finger was bitten
 				if (dist < CONF_MOTOR_DISTANCE || bitten)
@@ -209,11 +279,45 @@ int main() {
 					future_timestamp = get_random_future_timestamp(elapsed_time);
 					if (!bitten)
 					{
-						printf("Good job!\n");
+						print_random_text(text_win_round[0], CONF_TEXT_NUMBER_WIN_ROUND);
 						hum_points++;
 					}
 					else
 						comp_points++;
+					// Dirty hack to debounce button
+					_delay_ms(10);
+				}
+			}
+			if (bite_request2)
+			{
+				// Give motor command to close mouth only once
+				if (!bite_request2_old)
+					motor_move(CONF_MOTOR_MOVE2, CONF_MOTOR_MOVE2_CLOSE, MOTOR_MOVE_NON_BLOCKING);
+				_delay_ms(15);
+				uint16_t p = motor_get_position(CONF_MOTOR_MOVE2);
+				uint16_t dist = 0;
+				if (p > CONF_MOTOR_MOVE2_CLOSE)
+					dist = p - CONF_MOTOR_MOVE2_CLOSE;
+				else
+					dist = CONF_MOTOR_MOVE2_CLOSE - p;
+				if (bitten2)
+				{
+					print_random_text(text_lost_round[0], CONF_TEXT_NUMBER_LOST_ROUND);
+				}
+				// Open mouth in case the goal has been reached or finger was bitten
+				if (dist < CONF_MOTOR_DISTANCE || bitten2)
+				{
+					motor_move(CONF_MOTOR_MOVE2, CONF_MOTOR_MOVE2_OPEN, MOTOR_MOVE_BLOCKING);
+					future_timestamp2 = get_random_future_timestamp(elapsed_time);
+					if (!bitten2)
+					{
+						print_random_text(text_win_round[0], CONF_TEXT_NUMBER_WIN_ROUND);
+						hum_points++;
+					}
+					else
+						comp_points++;
+					// Dirty hack to debounce button
+					_delay_ms(10);
 				}
 			}
 		}
@@ -227,22 +331,27 @@ int main() {
 			}
 		}
 		// If the button has been pressed without any reason!
-		if (bitten & !last_bitten & !bite_request)
+		if ((bitten & !last_bitten || bitten2 & !last_bitten2) & !bite_request)
 		{
 			printf("Don't touch me!\n");
 		}
 		
 		// Do scoring and check for end of game
-		if (do_scoring(&hum_points, &comp_points))
+		if (calc_score_and_check_for_win(&hum_points, &comp_points))
 		{
 			future_timestamp = 0;
-			printf("\nPress start to begin new game!\n");
+			future_timestamp2 = 0;
+			bite_request = 0;
+			bite_request2 = 0;
+			printf("\nPress start to begin new game.\n");
 			// Wait for start button to begin
 			while (!BTN_START_PRESSED);
 		}			
 		last_bitten = bitten;
+		last_bitten2 = bitten2;		
 		bite_request_old = bite_request;
-		finger_in_old = finger_in;
+		bite_request2_old = bite_request2;
+		finger_in_old = finger_in2;
 		
 		// Print motor errors
 		PrintErrorCode();

@@ -13,7 +13,7 @@
 /// \private Number of available interrupts.
 #define IO_INTERRUPT_AMOUNT	8
 
-/// \private Storage for interrupt call back functions.
+/// \private Global variable to store interrupt callback functions.
 static volatile io_callback io_interrupt_callback[IO_INTERRUPT_AMOUNT] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 
 inline void buzzer_init()
