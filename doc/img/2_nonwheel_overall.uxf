@@ -234,7 +234,7 @@ m2=[Yes]
       <w>160</w>
       <h>40</h>
     </coordinates>
-    <panel_attributes>Reset timer</panel_attributes>
+    <panel_attributes>Reset update interval</panel_attributes>
     <additional_attributes/>
   </element>
   <element>
