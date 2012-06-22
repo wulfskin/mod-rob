@@ -1,5 +1,15 @@
-/*! \file serialzigbee.c
+/*! \file serialzigbee.h
     \brief Zigbee serial communication enabler and disabler
+	\author Dennis Hellner
+	\copyright GNU Public License V3
+	\date 2012
+	
+	\file serialzigbee.h
+	\details The serialzigbee is a add on for the typical serial connection, which is working for the Robotis controller CM-510.
+	According to the Robotis E-manual the serial communication receive pin can be set to receive ether from serial wire or Zigbee.
+	The port LINK_PLUGIN and ENABLE_RXD_LINK_PC on the microcontroller should be disabled (set to zero) and the	ENABLE_RXD_LINK_ZIGBEE should be activated (set to one).
+	
+	The serial sending will still be send both trough wire and Zigbee.
  */
 
 #ifndef _SERIALZIGBEE_HEADER

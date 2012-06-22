@@ -424,6 +424,28 @@ double calc_simple_moving_avg(uint16_t * value_buffer, uint8_t buffer_size, uint
 	return new_moving_avg; 
 }
 
+/**
+   Autonomous movement decision maker
+	\details 	\param[in]			movement_type			The active movement direction at the moment.
+	\param[in,out]		dist_front_buffer		The average buffer for calculating average of front sensor values
+	\param[in]			dist_front_avg			The front sensor average value
+	\param[in]			dist_left_avg			The left sensor average value
+	\param[in]			dist_right_avg			The right sensor average value
+	\returns					The chosen direction by autonomous movement decider.
+   This function makes decisions based on input values.
+   
+   A flow chart of the autonomous control:
+   <img src="2-c-nonewheel-autonomous.png">
+   
+   It does:
+	 - When robot going forward and close to wall: Go right
+	 - When robot is going left or right and is away from wall: Go forward
+	 - When robot is going left and wall is close on left side: Go right
+	 - When robot is going right and wall is close on right side: Go left
+	 
+   In short terms it makes the robot goes forward as the robot's main purpose. If there is a wall in front, it will go right until the wall is gone.
+   Should the robot go to left and right, and meet a wall, it will go the opposite direction.
+  */
 int execute_autonomous_movement(uint8_t movement_type, uint16_t * dist_front_buffer,
 	double dist_front_avg, double dist_left_avg, double dist_right_avg)
 {
