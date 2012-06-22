@@ -3,7 +3,7 @@
 	at the Technical University of Denmark. The team consists of the following four team members:
 	<ul>
 		<li><a href="mailto:s052332@student.dtu.dk">Dennis Hellner (s052332)</a></li>
-		<li><a href="mailto:s080147@student.dtu.dk">Hans-Peter Wolf (s111032</a></li>
+		<li><a href="mailto:s080147@student.dtu.dk">Hans-Peter Wolf (s111032)</a></li>
 		<li><a href="mailto:s080147@student.dtu.dk">Rune Klarskov Pagter (s080147)</a></li>
 		<li><a href="mailto:s104169@student.dtu.dk">Walter Gambelunghe (s104169)</a></li>
 	</ul>
