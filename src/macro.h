@@ -1,5 +1,8 @@
 /*! \file macro.h
+    \author Walter Gambelunghe
+    \copyright GNU Public License V3
     \brief Macros for accessing single bits within a register 
+    \date 2012
     */
 
 #ifndef __MACRO_H
