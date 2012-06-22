@@ -113,7 +113,7 @@ void firmware_init(){
 	
 }
 
-controller_run(){
+void controller_run(void) {
 	//Declare variables
 	///Store sensors readings
 	uint8_t ir_frontleft, ir_frontright, ir_backleft, ir_backright, dis_front;
