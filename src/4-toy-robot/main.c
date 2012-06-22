@@ -1,10 +1,10 @@
 /**
- \file main.c
+ \file 4-toy-robot/main.c
 \author Rune pagter Team Kick-Ass 
 \details main dokumentation for The shark, a toy robot
 */
 /*! function diagram
-*	\image html new_diagram2jpg.jpg
+*	\image html 4_shark_overall.png
 */
 
 /// 
