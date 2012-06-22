@@ -81,7 +81,10 @@ uint32_t get_random_future_timestamp(uint32_t current_time)
 	return current_time + CONF_BITE_MIN_WAIT_TIME + (uint32_t)random() % (CONF_BITE_MAX_WAIT_TIME - CONF_BITE_MIN_WAIT_TIME);
 }
 
-/// Function to generate seed using heap memory data
+/** Function to generate seed using heap memory data.
+	\copyright http://www.rn-wissen.de/index.php/Zufallszahlen_mit_avr-gcc
+ */
+
 unsigned short get_seed()
 {
 	unsigned short seed = 0;
