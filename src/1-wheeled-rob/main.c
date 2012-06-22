@@ -1,13 +1,13 @@
 /*! \file 1-wheeled-rob/main.c
-    \brief Runtime file with main function for the wheeled project 1
+    \brief Application code with main function for the wheeled project 1
 	\author Walter Gambelunghe
 	\copyright GNU Public License V3
 	\date 2012
 	
 	\file 1-wheeled-rob/main.c
 	
-	\details \details This file implements the control logic for the autonomous wheeled robot in project 1, as shown
-	by the following flowchart.<br><img src="../../doc/img/wheeled_flowchart.jpg" height="500" width="300">
+	\details  This file implements the control logic for the autonomous wheeled robot in project 1, as shown
+	by the following flowchart.<br><a name="flowchart"><img src="../../doc/img/wheeled_flowchart.jpg" ></a>
 */
 #include <stdio.h>
 #include <avr/io.h>
@@ -49,8 +49,9 @@
 ///Minimum allowed speed in percentage. Used for adaptive speed calculation.
 #define MIN_SPEED_IN_PERCENTAGE 25ul
 
-
+///Threshold value for speed adjustment.
 #define DISTANCE_TO_BRAKE		200
+/// Threshold value for detecting an obstacle.
 #define DISTANCE_TO_TURN			25
 
 ///Symbolic definition for the stopped state
@@ -70,8 +71,22 @@ void reset_state(void);
 int get_state(void);
 ///Changes global state
 void set_state(int new_state);
-
+/** Initialize all the firmware components used by the controller.
+* The following operation are performed.
+- Initialize serial for communication with the motors
+- Initialize serial for terminal I/O
+- Initialize sensors
+- Initialize General purpose I/O (LEDs, etc...)
+- Set interrupt callback function fr start button
+- Activate interrupts globally
+- Set the motors to wheel mode
+- Set serial communication through zigbee.
+*/
 void firmware_init(void);
+
+/**
+Contains the main loop with the control logic as describer in the <a href="#flowchart"> flowchart </a>
+*/
 void controller_run(void);
 
 /// Global status variable 
@@ -115,19 +130,19 @@ void firmware_init(){
 
 controller_run(){
 	//Declare variables
-	///Store sensors readings
+	//Store sensors readings
 	uint8_t ir_frontleft, ir_frontright, ir_backleft, ir_backright, dis_front;
 	
-	///Speeds to be managed by the control logic, without taking into account speed adaption
+	//Speeds to be managed by the control logic, without taking into account speed adaption
 	int speed_left = 0, speed_right = 0;
 	
-	///Speeds applied to the motors after adaptive speed calculation
+	//Speeds applied to the motors after adaptive speed calculation
 	uint16_t speed_l, speed_r;
 	
-	///Speed offset, to make sure initially heading slightly to the right and finally slightly to the left
+	//Speed offset, to make sure initially heading slightly to the right and finally slightly to the left
 	int offset = 10;
 	
-	///Directions of the wheels
+	//Directions of the wheels
 	char direction_left = 0, direction_right = 0;
 	
 	//main loop

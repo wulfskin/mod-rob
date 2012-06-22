@@ -8,17 +8,17 @@ Description of the code style convensions adopted.
 
 \details
 
-- macros names are all UPPERCASE
+- macros names are all UPPERCASE.
 \par Example
 	\code 
-	#define MY_MACRO 
+	#define MYMACRO 1
 	\endcode
 
-- Header files contain include safe guards to prevent recursive inclusion
+- Header files contain include safe guards to prevent recursive inclusion.
 \par Example
 	\code 
 	\\file mylib.h
-	ifndef __MYLIB_H
+	#ifndef __MYLIB_H
 	#define __MYLIB_H
 	
 	........ // library content goes here //......
@@ -60,15 +60,15 @@ Alternatively if different kind of elements are described in the same file, they
 	void io_init(void);
 	\endcode
 
-- Variables and function names are all lowercase. When they define an action or a property of a certain "subject", this is written before the action/ property itself
+- Variables and function names are all lowercase. When they define an action or a property of a certain "subject", this is written before the action/ property itself.
 \par Example
 	\code 
 	int box_size;
 	
-	box_size = box_set_size(10);
+	void box_set_size(int);
 	\endcode
 
--enumeration elements are all UPPERCASE and start with an abbreviation of the enumeration name
+- Enumeration elements are all UPPERCASE and start with an abbreviation of the enumeration name.
 
  \par Example
 	\code 
