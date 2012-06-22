@@ -8,7 +8,8 @@
 	\file 2-nonwheeled-rob/main.c
 	
 	\details This file contains the application code for the _Squid_ robot in both
-	remote-controlled (I) and autonomous mode (II). The Squid robot is a robot with four legs
+	remote-controlled (I) and autonomous mode (II). Both versions share the same
+	source code. The Squid robot is a robot with four legs
 	and six degrees of freedom (DOF). It can move forward, backwards and sidewards 
 	(both to the left and right). It is equipped with a long distance sensor in front
 	and two short distance sensors on the left and right side. In order to understand
@@ -65,7 +66,7 @@
 	information are found in the description of the specific function #execute_autonomous_movement.
 	
 	An overview of the main logic with the most important parts is given in the following figure.
-	<img src="2_nonwheel_overall.png" width="652" height="1275" alt="Overview of Squid's application logic">
+	<a name="main_logic"><img src="2_nonwheel_overall.png" width="652" height="1275" alt="Overview of Squid's application logic"></a>
 	
 */
 #include <stdio.h>
@@ -444,18 +445,27 @@ int execute_autonomous_movement(uint8_t movement_type, uint16_t * dist_front_buf
 		return movement_type;
 }
 
-/**
-  main call function for the none-wheeled robot.
-  Initializes serial connection, dynamixel connection, timer0 and 3 sensors. 
-  Is running an infinity look:
-	- Calculates a mean value for each sensor inputs.
-	- When robot is in movement:
-	  - Movement control
-	    - When robot going forward and close to wall: Go right
-	    - When robot is going left or right and is away from wall: Go forward
-	    - When robot is going left and wall is close on left side: Go right
-	    - When robot is going right and wall is close on right side: Go left
-	  - Call update_motor_position function when timer value global_elapsed_time has riched time
+/** Main application logic and control loop of the Squid robot.
+	This function contains the main application logic and the control loop of the robot. At first the used
+	firmware functionalities are initialized. This includes motors, the serial connection, the timer 0, the
+	I/O and the sensors. Then the motors are placed in the center position for starting and the non-ending
+	control loop is executed.
+	
+	Here to begin with the global variables (e.g. #global_release,
+	#global_movement_type and #global_elapsed_time) are copied in an atomic block to local
+	variables in order to avoid race conditions. Then the sensor values are read and a simple moving average of
+	the recent sensors values is formed (see #calc_simple_moving_avg). This is done to reduce the noise induced
+	by the movement. In the next part it is checked whether the robot is actually allowed to move. In autonomous
+	mode (Squid II) the sensors are now evaluated in order to generate the necessary movement direction
+	(see #execute_autonomous_movement). In non-autonomous mode (Squid I) this procedure is skipped since the
+	movement direction is given externally (see #serial_receive_data). In case the position is to be changed
+	the robot moves into its center position as at the start. Then in the last step the motor positions are updated
+	to form the movement (see #update_motor_position). At the end of each control loop cycle the current motor status
+	is printed out to report any motor errors.
+	
+	A <a href="#main_logic">schematic activity diagram</a> of the function is provided before.
+	
+	\returns The return value is not used, since the main function never ends.
  */
 int main() {	
 	// Initialize motor
