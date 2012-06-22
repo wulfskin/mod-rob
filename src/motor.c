@@ -1,6 +1,6 @@
 /*!
 \file motor.c
-\brief Interface to control the Dynamixel motors.(declaration part, see #motor.h for an interface description)
+\brief Interface to control the Dynamixel motors.(declaration part, see motor.h for an interface description)
 \author Walter Gambelunghe
 	\copyright GNU Public License V3
 	\date 2012

@@ -1,5 +1,5 @@
 /*! \file 2-nonwheeled-rob/main.c
-    \brief Runtime file with main function for the none-wheeled project 2 and 3
+    \brief Application code for the non-wheeled remote-controlled and autonomous robot _Squid_.
 	\author Dennis Hellner
 	\author Hans-Peter Wolf
 	\copyright GNU Public License V3
@@ -7,12 +7,68 @@
 	
 	\file 2-nonwheeled-rob/main.c
 	
-	\details This file ... Show diagram
+	\details This file contains the application code for the _Squid_ robot in both
+	remote-controlled (I) and autonomous mode (II). The Squid robot is a robot with four legs
+	and six degrees of freedom (DOF). It can move forward, backwards and sidewards 
+	(both to the left and right). It is equipped with a long distance sensor in front
+	and two short distance sensors on the left and right side. In order to understand
+	the following source code it is first important to have a basic understanding of how
+	the robot actually moves. This is given as follows.
+	
+	In order to move the robot one pair of legs lifts the robot and the other pair reaches
+	forward. Then the lifting legs drop	the robot again while the forward reaching legs are
+	pushing the robot to the front.	Movements to the back and to the side are achieved in the
+	exact same manner. In order to let the legs reach forward without touching the ground, the
+	lifting legs should be higher. This is achieved by unequal pairs of legs. Two of the four
+	legs have two DOF and two have only one DOF. This second degree of freedom allows them
+	to lift the robot high enough or bend them strong enough to reach forward while the other
+	pair can do its job without any further DOF.
+	
+	The control of the six robot motors is done via a very simple central pattern generator (CPG),
+	a simple harmonic oscillator with an #amplitude, #frequency, #phase shift and #offset. As the
+	sinusoidal motor position signals differs depending on the movement direction and the motor position,
+	the former arrays contain the values with respect to both of them. Given the former information the
+	motor position can be updated with a new position. This is done in the function #update_motor_position.
+	In order to limit the traffic on the motor bus the position is only updated every certain time interval
+	(#CONF_MOTOR_UPDATE_POSITION_INTERVAL).
+	
+	In order to set the right position at the right time the timing has to be precise. Thus the 8-bit timer 0
+	is used to generate an interrupt at 1 kHz frequency. In that interrupt #timer0_compare_match the global variable
+	#global_elapsed_time is incremented. This variable now provides a timestamp in milliseconds precision.
+	
+	The main application logic is provided in the #main method. At the beginning several firmware functions are called
+	to initialize motors, sensors, serial connection, timer and I/O. Then the motors are positioned in a defined center
+	position. Now the main control loop starts. In that loop first the global variables for movement release
+	(#global_release), movement direction (#global_movement_type), elapsed time (#global_elapsed_time) and autonomous
+	mode release (#global_release_autonomous) are copied to local variables to avoid race conditions. Then the sensor
+	values are read and a simple moving average (#calc_simple_moving_avg) with a fixed history is calculated to reduce
+	the noise induced by movement. In a third step it is checked whether the autonomous mode is activated and the
+	movement direction is calculated from the sensor inputs in case (#execute_autonomous_movement). Then it is checked
+	whether the movement direction has changed since the last time. If this is the case the robot moves its motors to the
+	center position and atomically update the global movement direction. Also a flag is set to make sure that the motor
+	positions get updated immediately despite the former mentioned interval. Finally the motor positions are updated
+	as former described.
+	
+	In remote-controlled mode the movement direction is set with commands over the serial communication line. The callback
+	function #serial_receive_data is called whenever a new character is received. Depending on the command it sets the
+	global movement release, the global movement direction or a few other parameters. See the description of the callback
+	function for more information. For safety reasons another way to set the movement release is by pressing the start
+	button on the controller. Pressing it executes another callback	function #btn_press_start in order to set or remove
+	the release.
+	
+	In non-autonomous mode the movement direction is set depending on the sensor inputs and a simple logic. By default the
+	robot moves forward. In case it comes close to an obstacle in front it changes its movement direction to the right until
+	there is no obstacle in front anymore. Then it goes forward again.
+	To avoid oscillation due to sensor noise a hysteresis between the two states is implemented. If the robot is going right
+	and comes to close to an obstacle on the right side, it inverts its movement. The same goes for the movement to the left
+	and an obstacle on the left side. At the moment the robot never goes back and thus has no sensors there as well. More 
+	information are found in the description of the specific function #execute_autonomous_movement.
+	
+	An overview of the main logic with the most important parts is given in the following figure.
+	<img src="2_nonwheel_overall.png" width="652" height="1275" alt="Overview of Squid's application logic">
+	
 */
 #include <stdio.h>
-#include <avr/io.h>
-#include <util/delay.h>
-#include <avr/interrupt.h>
 #include <math.h>
 #include <util/atomic.h>
 
@@ -21,101 +77,150 @@
 #include "../motor.h"
 #include <dynamixel.h>
 #include "../serial.h"
-#include "../error.h"
 #include "../serialzigbee.h"
 #include "../io.h"
 #include "../timer.h"
 
-/// Number of motors
+/// Number of motors.
 #define CONF_NUMBER_OF_MOTORS				6
-/// Delay between motor position updates
+/// Delay between motor position updates in order to reduce motor bus traffic.
 #define CONF_MOTOR_UPDATE_POSITION_INTERVAL	20
-/// Number of different possible movement directions
-#define CONF_NUMBER_OF_MOVEMENTS				4
 
-/// ID for movement direction forward
+/// Number of different possible movement directions.
+#define CONF_NUMBER_OF_MOVEMENTS				4
+/// ID for movement direction forward.
 #define CONF_MOVEMENT_FORWARD		0
-/// ID for movement direction backward
+/// ID for movement direction backward.
 #define CONF_MOVEMENT_BACKWARD		1
-/// ID for movement direction right
+/// ID for movement direction right.
 #define CONF_MOVEMENT_RIGHT			2
-/// ID for movement direction left
+/// ID for movement direction left.
 #define CONF_MOVEMENT_LEFT			3
 
-/// Port value for sensor in front (long distance)
+/// Port value for sensor in front (DMS sensor).
 #define CONF_SENSOR_FRONT			2
-/// Port value for sensor at left (ir sensor)
+/// Port value for sensor on the left side (IR sensor).
 #define CONF_SENSOR_LEFT				6
-/// Port value for sensor at right (ir sensor)
+/// Port value for sensor on the right side (IR sensor).
 #define CONF_SENSOR_RIGHT			1
 
-/// Lower level for distance on front sensor for state "long away from wall"
+/** Minimum necessary proximity towards an obstacle in front in order to start avoidance.
+	Together with #CONF_SENSOR_FRONT_MAX_PROXIMITY both variables define a hysteresis
+	of proximity in which the vehicle avoids an obstacle in front of the vehicle in autonomous mode. If an
+	an obstacle in front is less proximal than #CONF_SENSOR_FRONT_MIN_PROXIMITY the vehicle
+	will not try to avoid it. In contrast if an obstacle is more proximal than 
+	#CONF_SENSOR_FRONT_MAX_PROXIMITY then obstacle avoidance is active. In between the vehicle keeps
+	it current course in order to avoid oscillations due to sensor noise.
+ */
+
 #define CONF_SENSOR_FRONT_MIN_PROXIMITY		60
-/// Upper level for distance on front sensor for state "Close to wall"
+/** Maximum allowed proximity towards an obstacle in front.
+	Together with #CONF_SENSOR_FRONT_MIN_PROXIMITY both variables define a hysteresis
+	of proximity in which the vehicle avoids an obstacle in front of the vehicle in autonomous mode. If an
+	an obstacle in front is less proximal than #CONF_SENSOR_FRONT_MIN_PROXIMITY the vehicle
+	will not try to avoid it. In contrast if an obstacle is more proximal than 
+	#CONF_SENSOR_FRONT_MAX_PROXIMITY then obstacle avoidance is active. In between the vehicle keeps
+	it current course in order to avoid oscillations due to sensor noise.
+ */
 #define CONF_SENSOR_FRONT_MAX_PROXIMITY		150 
 
-/// Upper level for distance on left sensor for state "Close to wall"
+/// Maximum allowed proximity towards an obstacle on the left side.
 #define CONF_SENSOR_LEFT_MAX_PROXIMITY		40
-/// Upper level for distance on right sensor for state "Close to wall"
+/// Maximum allowed proximity towards an obstacle on the right side.
 #define CONF_SENSOR_RIGHT_MAX_PROXIMITY		40
 
-/// Number of samples for calculating an average of values from front sensor
+/// Number of samples used for calculating an average of values from the front sensor.
 #define CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES		128
-/// Number of samples for calculating an average of values from left sensor
+/// Number of samples used for calculating an average of values from the sensor on the left side.
 #define CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES		16
-/// Number of samples for calculating an average of values from right sensor
+/// Number of samples used for calculating an average of values from the sensor on the right side.
 #define CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES		16
-		
-// Global variables
-volatile uint8_t global_release = 0;
-volatile uint8_t global_release_autonomous = 0;
-volatile uint8_t global_use_zigbee = 0;
-volatile uint32_t global_elapsed_time = 0; // elapsed time in ms
-volatile uint8_t global_movement_type = CONF_MOVEMENT_FORWARD;
-		
-// **********************************************
-// Configuration 
-// **********************************************
-/// ID names of the #CONF_NUMBER_OF_MOTORS motors
-uint8_t ids[CONF_NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
-/// Amplitude of oscillations for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
-const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={
-																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
-																				{120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
-																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2},
-																				{(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2} };
-// Frequency in Hz for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
-const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] ={ 
-																				{1,   1,   1,   1,   1,   1},
-																				{1,   1,   1,   1,   1,   1},
-																				{1,   1,   1,   1,   1,   1},
-																				{1,   1,   1,   1,   1,   1} };
-/// Phase angle in rad for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
-const float angle[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = {
-																				{M_PI/3,   M_PI/3,   0,        M_PI,     M_PI/3,   M_PI/3},
-																				{M_PI/3,   M_PI/3,   M_PI,     0,        M_PI/3,   M_PI/3},
-																				{0,        M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   M_PI},
-																				{M_PI,     M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   0} };
-																					
-/// Offset for each of #CONF_NUMBER_OF_MOTORS in the #CONF_NUMBER_OF_MOVEMENTS states.
-const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = {
-																				{630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630},
-																				{630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630 },
-																				{(995-540)/2+540,   (512-480)/2+480,   (512-350)/2+350,   (512-350)/2+350,   (512-480)/2+480,   (995-540)/2+540},
-																				{(995-540)/2+540,   (512-480)/2+480,   (512-350)/2+350,   (512-350)/2+350,   (512-480)/2+480,   (995-540)/2+540} };
 
-/** Callback function for receiving data. 
-  The function uses serial_read to get data from serial buffer. Everytime a new data is received LED RXD is toggled.
-  Get data byte:
-    - p: Prints positions of all motors
-    - o: Prints values from sensors
-    - w: Robot go forward
-    - s: Robot go backward
-    - a: Robot go left
-    - d: Robot go right
-    - q: Stop or start robot
-    - z: Change between Zigbee and wired serial connection
-    - r: Change between autonomus or controled driving
+/// Global movement release.
+static volatile uint8_t global_release = 0;
+/// Global release for autonomous mode.
+static volatile uint8_t global_release_autonomous = 0;
+/// Global release for using the wireless ZigBee connection.
+static volatile uint8_t global_use_zigbee = 0;
+/// Global timer value in milliseconds.
+static volatile uint32_t global_elapsed_time = 0;
+/// Global movement direction.
+static volatile uint8_t global_movement_type = CONF_MOVEMENT_FORWARD;
+		
+/// Array of IDs of the motors to control.
+static const uint8_t ids[CONF_NUMBER_OF_MOTORS] = {6, 1, 3, 8, 2, 5};
+	
+/** Array of amplitudes by movement direction and motor for sinusoidal position signal in position measurement unit.
+\details This array stores for each movement direction and motor the amplitude
+	\f$ A \f$ of the sinusoidal position signal.
+	The motor position signal is a sinusoidal signal of the type
+	\f$ position(t) = A * cos(2 \pi f t +  \theta) + off \f$.
+ */
+static const uint16_t amplitude[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] =
+  {
+    {120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
+    {120 / 2,       44 / 2,        512/2 - 20,    512/2 - 20,    44 / 2,        120 / 2},
+    {(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2},
+    {(995-540)/2,   (512-480)/2,   (512-350)/2,   (512-350)/2,   (512-480)/2,   (995-540)/2}
+  };
+
+/** Array of frequencies by movement direction and motor for sinusoidal position signal in Hz.
+	\details This array stores for each movement direction and motor the frequency
+	\f$ f \f$ of the sinusoidal position signal.
+	The motor position signal is a sinusoidal signal of the type
+	\f$ position(t) = A * cos(2 \pi f t +  \theta) + off \f$.
+ */
+static const const float frequency[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] =
+  { 
+    {1,   1,   1,   1,   1,   1},
+    {1,   1,   1,   1,   1,   1},
+    {1,   1,   1,   1,   1,   1},
+    {1,   1,   1,   1,   1,   1}
+  };
+																		 
+/** Array of phase angles by movement direction and motor for sinusoidal position signal in rad.
+	\details This array stores for each movement direction and motor the phase shift
+	\f$ \theta \f$ of the sinusoidal position signal.
+	The motor position signal is a sinusoidal signal of the type
+	\f$ position(t) = A * cos(2 \pi f t +  \theta) + off \f$.
+ */
+static const const float phase[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] =
+  {
+    {M_PI/3,   M_PI/3,   0,        M_PI,     M_PI/3,   M_PI/3},
+    {M_PI/3,   M_PI/3,   M_PI,     0,        M_PI/3,   M_PI/3},
+    {0,        M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   M_PI},
+    {M_PI,     M_PI/3,   M_PI/2,   M_PI/2,   M_PI/3,   0}
+  };
+
+/** Array of offsets by movement direction and motor for sinusoidal position signal in rad.
+	\details This array stores for each movement direction and motor the offset
+	\f$ off \f$ of the sinusoidal position signal.
+	The motor position signal is a sinusoidal signal of the type
+	\f$ position(t) = A * cos(2 \pi f t +  \theta) + off \f$.
+ */														
+const uint16_t offset[CONF_NUMBER_OF_MOVEMENTS][CONF_NUMBER_OF_MOTORS] = 
+  {
+    {630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630},
+    {630,               556 + 50 - 70,     512/2+20,          512/2+20,          556 + 50 - 70,     630 },
+    {(995-540)/2+540,   (512-480)/2+480,   (512-350)/2+350,   (512-350)/2+350,   (512-480)/2+480,   (995-540)/2+540},
+    {(995-540)/2+540,   (512-480)/2+480,   (512-350)/2+350,   (512-350)/2+350,   (512-480)/2+480,   (995-540)/2+540}
+  };
+
+/** Callback function for receiving serial data.
+	\details This callback function is used to react on external commands sent over the serial communication line. It is executed
+	whenever a character has been received. The transfered character is read by the _serial_read()_ function and interpreted.
+	A reception of a character is indicated by flashing the #LED_RXD LED.
+	
+	The following commands are currently implemented
+    - 'p': Debug command to print current motor positions.
+    - 'o': Debug command to print current sensor values.
+    - 'w': Change movement direction to forward (set #global_release and #global_movement_type = #CONF_MOVEMENT_FORWARD).
+    - 's': Change movement direction to backward (set #global_release and #global_movement_type = #CONF_MOVEMENT_BACKWARD).
+    - 'a': Change movement direction to left (set #global_release and #global_movement_type = #CONF_MOVEMENT_LEFT).
+    - 'd': Change movement direction to right (set #global_release and #global_movement_type = #CONF_MOVEMENT_RIGHT).
+    - 'q': Stop or start movement (toggling #global_release).
+    - 'z': Change between Zigbee and wired serial connection (toggling #global_use_zigbee).
+    - 'r': Change between autonomous or remote-controlled mode (toggling #global_release_autonomous).
  */
 void serial_receive_data(void){
 	// Toggle receive LED
@@ -142,9 +247,9 @@ void serial_receive_data(void){
 		case 'o':
 		{
 			global_release = 0;
-			uint16_t dist_front = sensor_read(CONF_SENSOR_FRONT, DISTANCE);
-			uint16_t dist_left = sensor_read(CONF_SENSOR_LEFT, IR);
-			uint16_t dist_right = sensor_read(CONF_SENSOR_RIGHT, IR);
+			uint16_t dist_front = sensor_read(CONF_SENSOR_FRONT, SENSOR_DISTANCE);
+			uint16_t dist_left = sensor_read(CONF_SENSOR_LEFT, SENSOR_IR);
+			uint16_t dist_right = sensor_read(CONF_SENSOR_RIGHT, SENSOR_IR);
 			printf("Sensors: Front: %3u, Left: %3u, Right: %3u.\n", dist_front, dist_left, dist_right);
 			break;
 		}
@@ -224,21 +329,24 @@ void serial_receive_data(void){
 	}
 }
 
-/**
-  Callback function for pressing start button.
-  Is called when start button is pressed.
-  Will toggle between robot running  not running mode.
-  */
+/** Callback function for pressing the start button.
+	\details This callback function is called whenever the start button is pressed or released. It sets
+	the global movement release #global_release in order to start or stop the robot movement.
+ */
 void btn_press_start(void)
 {
 	if (BTN_START_PRESSED)
 		global_release ^= 1;
 }
 
-/**
-  Updates the positions of motors using the cosinus algorithm A*cos(2*pi*f*t + angle) + offset
-  \param[in]	time_in_ms		Is set from current time from the timer, and is used as t in the cosinus algorithm
-  \param[in]    movement_type	Decides what values is used for each motors amplitude, frequency, angle and offset.
+/** Update of the motor position with a sinusoidal signal.
+	\details \param[in]	time_in_ms		Current time \f$ t \f$.
+	\param[in]	movement_type	Definition of the movement direction. 
+	\details This functions updates the motor position depending on the current movement direction and time
+	with a sinusoidal signal of the type \f[ position(t) = A * cos(2 \pi f t +  \theta) + off. \f]
+	Depending on the movement direction different parameter sets for #amplitude \f$ A \f$, #frequency \f$ f \f$,
+	#phase shift \f$ \theta \f$ and #offset \f$ off \f$ are used.
+	In order to reduce motor bus traffic all motors are controlled at the same time.
  */
 void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
 	if (movement_type < CONF_NUMBER_OF_MOVEMENTS)
@@ -246,17 +354,18 @@ void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
 		uint16_t pos[CONF_NUMBER_OF_MOTORS];
 		for (int i=0; i<CONF_NUMBER_OF_MOTORS; i++)
 		{
-			float c = cos(2 * M_PI * frequency[movement_type][i] * (float)time_in_ms / 1000 + angle[movement_type][i]);
+			float c = cos(2 * M_PI * frequency[movement_type][i] * (float)time_in_ms / 1000 + phase[movement_type][i]);
 			pos[i] = amplitude[movement_type][i]*c + offset[movement_type][i];
 		}
 		motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, pos, MOTOR_MOVE_NON_BLOCKING);		
 	}
 }
 
-/** 
-  Callback function for timer 0.
-  Timer is running in 1kHz and adds 1 to the global value global_elapsed_time.
-  */
+/** Output compare callback function for timer 0.
+	This output compare callback function of timer 0 is called at 1 kHz and used to generate a precise global timer
+	#global_elapsed_time in milliseconds units. Based on this timer the motor positions are accurately controlled
+	in #CONF_MOTOR_UPDATE_POSITION_INTERVAL intervals by calling #update_motor_position.
+ */
 void timer0_compare_match(void)
 {
 	if (global_release)
@@ -271,6 +380,19 @@ void timer0_compare_match(void)
 		LED_TOGGLE(LED_AUX);
 }
 
+/** Helper function to calculate simple moving average.
+	\details \param[in,out]	value_buffer	Pointer to a data point array.
+	\param[in]			buffer_size			Length of data points array \f$ n \f$.
+	\param[in,out]		new_index			Pointer to an array place for the new data point to store.
+	\param[in]			new_value			New data point \f$ p_M \f$ to store.
+	\param[in]			old_moving_avg		Old moving average value \f$ SMA_{old} \f$.
+	
+	This helper function calculates the simple moving average \f$ SMA = SMA_{old} - \frac{p_{M-n}-p_M}{n} \f$. In order
+	to increase the performance it uses the old average \f$ SMA_{old} \f$ instead of summing up all former data points.
+	In this context the function is used to reduce the sensor noise induced by the movement of the vehicle.
+	
+	\returns The function returns the new simple moving average \f$ SMA \f$.	
+ */
 double calc_simple_moving_avg(uint16_t * value_buffer, uint8_t buffer_size, uint8_t * new_index, uint16_t new_value,
 	double old_moving_avg)
 {
@@ -334,7 +456,7 @@ int execute_autonomous_movement(uint8_t movement_type, uint16_t * dist_front_buf
 	    - When robot is going left and wall is close on left side: Go right
 	    - When robot is going right and wall is close on right side: Go left
 	  - Call update_motor_position function when timer value global_elapsed_time has riched time
-  */
+ */
 int main() {	
 	// Initialize motor
 	dxl_initialize(0, 1);
@@ -351,20 +473,18 @@ int main() {
 	io_init();
 	io_set_interrupt(BTN_START, &btn_press_start);
 	// Initialize sensors
-	sensor_init(CONF_SENSOR_FRONT, DISTANCE);
-	sensor_init(CONF_SENSOR_LEFT, IR);
-	sensor_init(CONF_SENSOR_RIGHT, IR);
+	sensor_init(CONF_SENSOR_FRONT, SENSOR_DISTANCE);
+	sensor_init(CONF_SENSOR_LEFT, SENSOR_IR);
+	sensor_init(CONF_SENSOR_RIGHT, SENSOR_IR);
 	// Enable global interrupts
 	sei();
 	// Center motor position
 	const uint16_t center_pos[CONF_NUMBER_OF_MOTORS] = {512, 512, 512, 512, 512, 512};
 	motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, center_pos, MOTOR_MOVE_BLOCKING);
 	// Declare local variables
-	uint8_t release = 0;
-	uint32_t elapsed_time = 0;
-	uint32_t last_elapsed_time = 0;
-	uint8_t movement_type = 0;
-	uint8_t last_movement_type = 0;
+	uint8_t release = 0, release_autonomous = 0;
+	uint32_t elapsed_time = 0, last_elapsed_time = 0;
+	uint8_t movement_type = 0, last_movement_type = 0;
 	// Variables to calculate simple moving average
 	uint16_t dist_front_buffer[CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES];
 	double dist_front_avg = 0;
@@ -381,22 +501,23 @@ int main() {
 			release = global_release;
 			elapsed_time = global_elapsed_time;
 			movement_type = global_movement_type;
+			release_autonomous = global_release_autonomous;
 		}
 		
 		// Read sensor measurements and calculate simple moving average to remove noise induced by movements
 		dist_front_avg = calc_simple_moving_avg(dist_front_buffer, CONF_SENSOR_FRONT_NUMBER_OF_SAMPLES,
-			&dist_front_buffer_pointer, sensor_read(CONF_SENSOR_FRONT, DISTANCE), dist_front_avg);
+			&dist_front_buffer_pointer, sensor_read(CONF_SENSOR_FRONT, SENSOR_DISTANCE), dist_front_avg);
 		dist_left_avg = calc_simple_moving_avg(dist_left_buffer, CONF_SENSOR_LEFT_NUMBER_OF_SAMPLES,
-			&dist_left_buffer_pointer, sensor_read(CONF_SENSOR_LEFT, DISTANCE), dist_left_avg);
+			&dist_left_buffer_pointer, sensor_read(CONF_SENSOR_LEFT, SENSOR_DISTANCE), dist_left_avg);
 		dist_right_avg = calc_simple_moving_avg(dist_right_buffer, CONF_SENSOR_RIGHT_NUMBER_OF_SAMPLES,
-			&dist_right_buffer_pointer, sensor_read(CONF_SENSOR_RIGHT, DISTANCE), dist_right_avg);
+			&dist_right_buffer_pointer, sensor_read(CONF_SENSOR_RIGHT, SENSOR_DISTANCE), dist_right_avg);
 
 		// Check for release to move
 		if (release)
 		{
 			
 			// Check if autonomous control is active and execute in case
-			if (global_release_autonomous)
+			if (release_autonomous)
 			{
 				uint8_t new_movement_type = execute_autonomous_movement(movement_type, dist_front_buffer,
 					dist_front_avg, dist_left_avg, dist_right_avg);

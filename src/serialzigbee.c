@@ -1,3 +1,7 @@
+/*! \file serialzigbee.c
+    \brief Zigbee serial communication enabler and disabler (declaration part, see serialzigbee.h for an interface description).
+ */
+
 #include <avr/io.h>
 #include "serialzigbee.h"
 

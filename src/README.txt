@@ -15,20 +15,20 @@
 	The four different projects (applications) are:
 	<ol>
 		<li>
-			<b><i>Wally</i>: Wheeled autonomous robot (1-wheeled-rob/main.c):</b><br>
+			<b><i>Wally</i>: A wheeled autonomous robot (1-wheeled-rob/main.c):</b><br>
 			The goal of this project is to create a robot that can navigate _autonomously_ through a very easy course
 			using wheels.<br>
 			<i>Responsibility: Walter Gambelunghe.</i>
 		</li>
 		<li>
-			<b><i>Squid</i>: Non-wheeled remote-controlled and autonomous robot (2-nonwheeled-rob/main.c):</b><br>
+			<b><i>Squid I/II</i>: A non-wheeled remote-controlled and autonomous robot (2-nonwheeled-rob/main.c):</b><br>
 			The goal of this project is to create a robot that can navigate either _remote-controlled_ or _autonomously_ through
 			a very easy course using only non-rotating movements. Both projects share the same source code whit an option to
 			select the desired operation mode.<br>
 			<i>Responsibility: Hans-Peter Wolf (remote-controlled) and Dennis Hellner (autonomous).</i>
 		</li>
 		<li>
-			<b><i>Shark</i>: Toy robot (4-toy-robot/main.c):</b><br>
+			<b><i>Shark</i>: A toy robot (4-toy-robot/main.c):</b><br>
 			The goal of this project is to create a toy robot. That is a robot that can be used as a toy.<br>
 			<i>Responsibility: Rune Klarskov Pagter.</i>
 		</li>
