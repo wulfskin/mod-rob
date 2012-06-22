@@ -235,7 +235,9 @@ void serial_receive_data(void){
 		// Output motor positions
 		case 'p':
 		{
+			// Stop robot
 			global_release = 0;
+			// Print positions of all motors for debugging
 			printf("\nPositions of motors:\n");
 			for (uint16_t i=0; i<CONF_NUMBER_OF_MOTORS; i++) {
 				uint16_t v = motor_get_position(ids[i]);
@@ -247,7 +249,9 @@ void serial_receive_data(void){
 		// Output sensor positions
 		case 'o':
 		{
+			// Stop robot
 			global_release = 0;
+			// Print values of all sensors for debugging
 			uint16_t dist_front = sensor_read(CONF_SENSOR_FRONT, SENSOR_DISTANCE);
 			uint16_t dist_left = sensor_read(CONF_SENSOR_LEFT, SENSOR_IR);
 			uint16_t dist_right = sensor_read(CONF_SENSOR_RIGHT, SENSOR_IR);
@@ -258,6 +262,7 @@ void serial_receive_data(void){
 		// Forward
 		case 'w':
 		{
+			// Start robot and move forwards
 			global_release = 1;
 			global_movement_type = CONF_MOVEMENT_FORWARD;
 			printf("Going forward.\n");
@@ -267,6 +272,7 @@ void serial_receive_data(void){
 		// Backward
 		case 's':
 		{
+			// Start robot and move backwards
 			global_release = 1;
 			global_movement_type = CONF_MOVEMENT_BACKWARD;
 			printf("Going backward.\n");
@@ -276,6 +282,7 @@ void serial_receive_data(void){
 		// Left
 		case 'a':
 		{
+			// Start robot and move to the left side
 			global_release = 1;
 			global_movement_type = CONF_MOVEMENT_LEFT;
 			printf("Going left.\n");
@@ -285,16 +292,17 @@ void serial_receive_data(void){
 		// Right
 		case 'd':
 		{
+			// Start robot and move to the right side
 			global_release = 1;
 			global_movement_type = CONF_MOVEMENT_RIGHT;
 			printf("Going right.\n");			
 			break;
 		}
 	
-		// Stop
+		// Start or stop
 		case 'q':
 		{
-			// Toggle release
+			// Start or stop robot
 			global_release ^= 1;
 			break;
 		}
@@ -311,20 +319,22 @@ void serial_receive_data(void){
 			}
 			else
 			{
+				// Enable wired connection
 				serial_set_wire();
 				printf("Using wired connection.\n");
 			}
 			break;
 		}
 		
-		// Enable autonomous control
+		// Enable/disable autonomous control
 		case 'r':
 		{
+			// Enable or disable autonomous control mode
 			global_release_autonomous ^= 1;
 			if (global_release_autonomous)
-				printf("Autonomous control activated.\n");
+				printf("Autonomous control mode activated.\n");
 			else
-				printf("Autonomous control deactivated.\n");
+				printf("Autonomous control mode deactivated.\n");
 			break;
 		}
 	}
@@ -336,6 +346,7 @@ void serial_receive_data(void){
  */
 void btn_press_start(void)
 {
+	// Start robot in case button is pressed (and not released)
 	if (BTN_START_PRESSED)
 		global_release ^= 1;
 }
@@ -353,11 +364,13 @@ void update_motor_position(uint16_t time_in_ms, uint8_t movement_type) {
 	if (movement_type < CONF_NUMBER_OF_MOVEMENTS)
 	{
 		uint16_t pos[CONF_NUMBER_OF_MOTORS];
+		// Generate position signal for each motor
 		for (int i=0; i<CONF_NUMBER_OF_MOTORS; i++)
 		{
 			float c = cos(2 * M_PI * frequency[movement_type][i] * (float)time_in_ms / 1000 + phase[movement_type][i]);
 			pos[i] = amplitude[movement_type][i]*c + offset[movement_type][i];
 		}
+		// Send motor position signal to all motors at once
 		motor_sync_move(CONF_NUMBER_OF_MOTORS, ids, pos, MOTOR_MOVE_NON_BLOCKING);		
 	}
 }
@@ -371,12 +384,13 @@ void timer0_compare_match(void)
 {
 	if (global_release)
 	{
+		// Increase timer
 		global_elapsed_time++;
 		LED_ON(LED_PLAY);
 	}
 	else
 		LED_OFF(LED_PLAY);
-	// Toggle live bit
+	// Toggle live bit every second
 	if (!(global_elapsed_time % 1000))
 		LED_TOGGLE(LED_AUX);
 }
@@ -470,7 +484,7 @@ int execute_autonomous_movement(uint8_t movement_type, uint16_t * dist_front_buf
 int main() {	
 	// Initialize motor
 	dxl_initialize(0, 1);
-	// Initialize serial connection and active ZigBee
+	// Initialize serial connection and activate ZigBee
 	serial_initialize(57600);
 	serial_set_zigbee();
 	serial_set_rx_callback(&serial_receive_data);
@@ -505,7 +519,7 @@ int main() {
 	uint8_t dist_front_buffer_pointer = 0, dist_left_buffer_pointer = 0, dist_right_buffer_pointer = 0;
 	while(1)
 	{
-		// Copy global variables for local usage to avoid race conditions
+		// Copy global variables in an atomic blocks to avoid race conditions
 		ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 		{
 			release = global_release;
@@ -535,6 +549,7 @@ int main() {
 				if (new_movement_type != movement_type)
 				{
 					movement_type = new_movement_type;
+					// Update the global movement direction in an atomic block to avoid race conditions
 					ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 					{
 						global_movement_type = movement_type;
