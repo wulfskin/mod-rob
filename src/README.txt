@@ -10,7 +10,7 @@
 	The documentation covers three different software projects reflecting four different robots. Each robots was built
 	using the <a href="http://www.robotis.com/xe/bioloid_en">Bioloid Comprehensive Robot Kit</a> feauturing an 
 	<a href="http://www.atmel.com/devices/atmega2561.aspx">Atmel ATmega2561</a> microcontroller. More information on each
-	project is found in the respective source code. Details about coding-style conventions can be found in styleguide.txt.
+	project is found in the respective source code. Details about coding-style conventions can be found in src/styleguide.txt.
  	
 	The four different projects (applications) are:
 	<ol>
