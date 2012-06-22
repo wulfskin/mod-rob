@@ -81,11 +81,6 @@ uint32_t get_random_future_timestamp(uint32_t current_time)
 	return current_time + CONF_BITE_MIN_WAIT_TIME + (uint32_t)random() % (CONF_BITE_MAX_WAIT_TIME - CONF_BITE_MIN_WAIT_TIME);
 }
 
-uint16_t get_random_value(uint16_t range)
-{
-	return (random() % range);
-}
-
 /// Function to generate seed using heap memory data
 unsigned short get_seed()
 {
@@ -95,7 +90,6 @@ unsigned short get_seed()
 	
 	while (p >= &__heap_start + 1)
 	seed ^= * (--p);
-	
 	return seed;
 }
 
@@ -141,31 +135,6 @@ void print_random_text(const char * text_array, uint8_t array_size)
 	printf("%s \n", text);
 }
 
-#define TUNE_C 4186.009
-#define TUNE_D 4698.636
-#define TUNE_E 5274.041
-#define TUNE_F 5587.652
-#define TUNE_G 6271.927
-#define TUNE_A 7040.000
-#define TUNE_B 7902.133
-
-void play_note(double frequency, double length){
-	
-	double delay = 1000000/frequency/2;
-	double cycles = frequency * length/ 1000;
-	for (double i=0; i < cycles; i++) {
-		PORTB &= ~0x20;
-		for(double j=0;j<delay;j++){
-			_delay_us(1);
-		}
-		PORTB |= 0x20;
-		for(double j=0;j<delay;j++){
-			_delay_us(1);
-		}
-	}
-	
-}
-
 int main() {
 	
 	// Seed random seed.
@@ -183,6 +152,8 @@ int main() {
 	
 	sensor_init(CONF_SENSOR_FINGER, SENSOR_IR);
 	sensor_init(CONF_BUTTON_BITE, SENSOR_TOUCH);
+	sensor_init(CONF_SENSOR_FINGER2, SENSOR_IR);
+	sensor_init(CONF_BUTTON_BITE2, SENSOR_TOUCH);
 	io_init();
 	
 	// Activate general interrupts
@@ -206,12 +177,10 @@ int main() {
 	uint32_t elapsed_time = 0;
 	uint32_t future_timestamp = 0, future_timestamp2 = 0;
 	uint8_t dist_finger = 0, dist_finger2 = 0, bitten = 0, last_bitten = 0, bitten2 = 0, last_bitten2 = 0;
-	uint32_t finger_in_time = 0;
 	
 	// Helper variables and edge detection
 	uint8_t bite_request = 0, bite_request_old = 0, bite_request2 = 0, bite_request2_old = 0;
 	uint8_t finger_in = 0, finger_in_old = 1;
-	int finger_in2 = 0;
 		
 	while(1) {
 		// Copy global variables 
@@ -235,16 +204,8 @@ int main() {
 		// Build internal flags
 		bite_request = (elapsed_time >= future_timestamp);
 		bite_request2 = (elapsed_time >= future_timestamp2);
-		//finger_in = (dist_finger >= CONF_FINGER_MIN_PROXIMITY);
-		if (dist_finger >= CONF_FINGER_PROXIMITY_IN)
-			finger_in_time = elapsed_time;
-		//finger_in = (dist_finger >= CONF_FINGER_PROXIMITY_IN) || (elapsed_time < (finger_in_time + CONF_FINGER_IN_DELAY));
-		finger_in2 = 1;
-		if (finger_in2)
-			LED_ON(LED_POWER);
-		else
-			LED_OFF(LED_POWER);
-		//finger_in = 1;
+		//finger_in = (dist_finger >= CONF_FINGER_PROXIMITY_IN));
+		finger_in = 1;
 		
 		// Debug prints
 		//if (bite_request != bite_request_old)
@@ -254,7 +215,7 @@ int main() {
 		//printf("Sensor: %d %d.\n", dist_finger, finger_in);
 			
 		// Check if finger is in range
-		if (finger_in2)
+		if (finger_in)
 		{
 			if (bite_request)
 			{
@@ -264,6 +225,7 @@ int main() {
 				_delay_ms(15);
 				uint16_t p = motor_get_position(CONF_MOTOR_MOVE);
 				uint16_t dist = 0;
+				// Calculate distance between current position and goal position
 				if (p > CONF_MOTOR_MOVE_CLOSE)
 					dist = p - CONF_MOTOR_MOVE_CLOSE;
 				else
@@ -321,6 +283,7 @@ int main() {
 				}
 			}
 		}
+		// Path is never executed because finger_in is always true
 		else
 		{
 			// If there is a request to bite or the finger has been removed
@@ -351,7 +314,7 @@ int main() {
 		last_bitten2 = bitten2;		
 		bite_request_old = bite_request;
 		bite_request2_old = bite_request2;
-		finger_in_old = finger_in2;
+		finger_in_old = finger_in;
 		
 		// Print motor errors
 		PrintErrorCode();
