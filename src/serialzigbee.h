@@ -1,4 +1,4 @@
-/*! \file serialzigbee.c
+/*! \file serialzigbee.h
     \brief Zigbee serial communication enabler and disabler
 	\author Dennis Hellner
 	\copyright GNU Public License V3
