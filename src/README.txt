@@ -21,7 +21,7 @@
 			<i>Responsibility: Walter Gambelunghe.</i>
 		</li>
 		<li>
-			<b><i>Squid</i>: A non-wheeled remote-controlled and autonomous robot (2-nonwheeled-rob/main.c):</b><br>
+			<b><i>Squid I/II</i>: A non-wheeled remote-controlled and autonomous robot (2-nonwheeled-rob/main.c):</b><br>
 			The goal of this project is to create a robot that can navigate either _remote-controlled_ or _autonomously_ through
 			a very easy course using only non-rotating movements. Both projects share the same source code whit an option to
 			select the desired operation mode.<br>

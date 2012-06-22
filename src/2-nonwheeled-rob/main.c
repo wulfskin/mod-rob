@@ -8,7 +8,7 @@
 	\file 2-nonwheeled-rob/main.c
 	
 	\details This file contains the application code for the _Squid_ robot in both
-	remote-controlled and autonomous mode. The Squid robot is a robot with four legs
+	remote-controlled (I) and autonomous mode (II). The Squid robot is a robot with four legs
 	and six degrees of freedom (DOF). It can move forward, backwards and sidewards 
 	(both to the left and right). It is equipped with a long distance sensor in front
 	and two short distance sensors on the left and right side. In order to understand
