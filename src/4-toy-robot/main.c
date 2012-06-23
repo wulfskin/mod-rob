@@ -1,10 +1,13 @@
 /**
- \file main.c
-\author Rune pagter Team Kick-Ass 
-\details main dokumentation for The shark, a toy robot
+	\file 4-toy-robot/main.c
+	\brief Application code for the toy robot _Shark_.
+	\author Rune pagter Team Kick-Ass 
+	\copyright GNU Public License V3
+	\date 2012
+	\details main dokumentation for The shark, a toy robot
 */
 /*! function diagram
-*	\image html new_diagram2jpg.jpg
+*	\image html 4_shark_overall.png
 */
 
 /// 
@@ -100,7 +103,10 @@ uint32_t get_random_future_timestamp(uint32_t current_time)
 	return current_time + CONF_BITE_MIN_WAIT_TIME + (uint32_t)random() % (CONF_BITE_MAX_WAIT_TIME - CONF_BITE_MIN_WAIT_TIME);
 }
 
-/// Function to generate seed (to random function) using heap memory data
+	
+/** Function to generate seed using heap memory data.
+	\copyright http://www.rn-wissen.de/index.php/Zufallszahlen_mit_avr-gcc
+ */
 unsigned short get_seed()
 {
 	unsigned short seed = 0;

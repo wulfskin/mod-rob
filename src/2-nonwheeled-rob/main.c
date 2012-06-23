@@ -435,7 +435,7 @@ double calc_simple_moving_avg(uint16_t * value_buffer, uint8_t buffer_size, uint
    This function makes decisions based on input values.
    
    A flow chart of the autonomous control:
-   <img src="2-c-nonewheel-autonomous.png">
+   \image html 2-c-nonewheel-autonomous.png
    
    It does:
 	 - When robot going forward and close to wall: Go right
