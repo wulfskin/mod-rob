@@ -1,0 +1,85 @@
+/** 
+\file styleguide.txt
+\author Walter Gambelunghe
+\date 2012
+
+\brief
+Description of the code style convensions adopted.
+
+\details
+
+- macros names are all UPPERCASE.
+\par Example
+	\code 
+	#define MYMACRO 1
+	\endcode
+
+- Header files contain include safe guards to prevent recursive inclusion.
+\par Example
+	\code 
+	\\file mylib.h
+	#ifndef __MYLIB_H
+	#define __MYLIB_H
+	
+	........ // library content goes here //......
+	
+	#endif // __MYLIB_H
+	
+	\endcode
+
+- Macros, variables and functions names composed by more than one word use an underscore character ('_') for spacing.
+\par Example
+	\code 
+	#define MY_MACRO
+	
+	int my_variable=0;
+	
+	void my_function( void );
+	\endcode
+
+- Macros and function names start with the name of the file they are defined in as a prefix. 
+Alternatively if different kind of elements are described in the same file, they start with the type name.
+ \par Example
+	\code 
+	
+	//file sensor.h
+		
+	#define SENSOR_IR 1
+	
+	void sensor_init(int port, int type);
+	
+	\endcode
+
+ \par Example:
+	\code 
+	//file io.h
+	#LED_POWER 0x54
+	
+	void led_init(void);
+	
+	void io_init(void);
+	\endcode
+
+- Variables and function names are all lowercase. When they define an action or a property of a certain "subject", this is written before the action/ property itself.
+\par Example
+	\code 
+	int box_size;
+	
+	void box_set_size(int);
+	\endcode
+
+- Enumeration elements are all UPPERCASE and start with an abbreviation of the enumeration name.
+
+ \par Example
+	\code 
+	typedef enum {
+		...
+		TPS_DIV_64
+		TPS_DIV_128
+		...
+	}timer_prescaler;
+
+	\endcode
+
+
+*/
